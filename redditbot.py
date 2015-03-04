@@ -11,7 +11,6 @@ r = praw.Reddit(user_agent='redditbot 0.1 by /u/hfybot')
 # you'll need to set the REDDIT_USER and REDDIT_PASS
 # environment variables before you run this bot
 
-print os.environ['REDDIT_USER'], os.environ['REDDIT_PASS']
 r.login(os.environ['REDDIT_USER'], os.environ['REDDIT_PASS'])
 
 while True:

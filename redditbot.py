@@ -5,11 +5,13 @@ import praw
 
 # reddit really wants you to use a unique user agent string.
 # see https://github.com/reddit/reddit/wiki/API#rules
-r = praw.Reddit(user_agent='redditbot 0.1 by /u/')
+r = praw.Reddit(user_agent='redditbot 0.1 by /u/hfybot')
 # login isn't strictly needed here since we're not
 # posting, commenting, etc.
 # you'll need to set the REDDIT_USER and REDDIT_PASS
 # environment variables before you run this bot
+
+print os.environ['REDDIT_USER'], os.environ['REDDIT_PASS']
 r.login(os.environ['REDDIT_USER'], os.environ['REDDIT_PASS'])
 
 while True:

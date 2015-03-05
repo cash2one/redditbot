@@ -182,7 +182,12 @@ class TagBot:
 
 
 def main():
+    try:
         TagBot('HFYBeta').run()
+    except Exception, e:
+        log.exception(e)
+        sleep(120)
+
 
 def test1():
     test = """* [Test Imgur Link](http://www.reddit.com/r/HFYBeta/comments/2gaib5/test_imgur_link/)
@@ -196,7 +201,7 @@ def test1():
     """
 
     print sort_wiki_page(test)
-
+        
 
 if __name__ == '__main__':
     main()        

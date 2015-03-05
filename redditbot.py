@@ -146,20 +146,37 @@ class TagBot:
     def get_last_seen(self):
         self.sleep()
         return self.account.get_wiki_page(self.subreddit, 'tags/last_seen')
+
+    def send_message(self, recipient, subject, message):
+        self.sleep()
+        return self.account.send_message(recipient, subject, message)
+
+    def verify_user(self, comment):
+        if comment.author.name not in self.volunteers:
+            log.debug("Unauthorized tagging attempt")
+            comment.reply("You need to contact /u/LordFuzzy to be able to volunteer tags!")
+            self.last_seen = comment.last_seen
+            return False
+        else:
+            return True
+
         
     def run(self):
 
         while True:
+            log.debug('waking up')
             self.last_seen = float(self.get_last_seen().content_md)
             comments = self.get_comments()
 
             try:
                 for tag_comment in  [ x for x in comments if self.has_new_tags(x) ]:
                     log.debug('Processing comment %s' % x.permalink)
+                    if not self.verify_user(tag_comment): continue
                     self.update_wiki_page(tag_comment)
             finally:
                 self.save_last_seen()
 
+            log.debug('sleeping...')
             sleep(30)
 
 

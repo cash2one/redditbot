@@ -104,7 +104,8 @@ class TagBot:
         sleep(5) 
 
     def update_wiki_page(self, comment):
-        tags = [ x for x in comment.body.split() if x in self.tags ]
+        tmp = comment.body.replace(",", " ")
+        tags = [ x for x in tmp.split() if x in self.tags ]
 
         log.debug("found tags: %s" % ",".join(tags))
 
@@ -122,7 +123,7 @@ class TagBot:
         
         links = [ "[%s](/r/%s/wiki/tags/%s)" % (tag, self.subreddit, tag) for tag in tags ]
         msg = "Verified tags: %s" % ", ".join(links)
-        msg += '/n/nAccepted list of tags can be found here: /r/HFYBeta/wiki/tags/accepted'
+        msg += '\n\nAccepted list of tags can be found here: /r/HFYBeta/wiki/tags/accepted'
         comment.reply(msg)
 
         self.last_seen = comment.created

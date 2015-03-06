@@ -8,8 +8,6 @@ from itertools import groupby
 
 #TODO:
 
-# - a way to remove stories from tag pages
-# - if submitter comments treat it as a final tagging
 # - error messages when config is missing
 
 log.basicConfig(level=log.DEBUG)
@@ -34,7 +32,7 @@ class SortableLine:
 
         self.sortby = self.name.lower()
 
-def sort_wiki_page(page, tag, permalink):
+def sort_wiki_page(page, tag, permalink=None):
     tmp = [ SortableLine(line) for line in page.split('\n') if line and not line.startswith('#') ]
 
     if tag.startswith('-'): tmp = [ x for x in tmp if x.permalink != permalink ]
@@ -54,6 +52,7 @@ def sort_wiki_page(page, tag, permalink):
 #works on already sorted SortableLines
 def format_for_wiki(lines, tag):
     anchor = None
+    if tag.startswith('-'): tag = tag[1:]
     ret = []
     ret.append('#%s' % tag)
     ret.append('\n\n')
@@ -84,10 +83,10 @@ class TagBot:
         self.tags = [ x.lower() for x in self.get_accepted_tags() ]
         self.volunteers = self.get_volunteers()
         self.mods = self.get_mods()
-        self.codex_keeper = self.get_kodex_keeper().replace('/u/','').replace('/','')
+        self.codex_keeper = self.get_codex_keeper().replace('/u/','').replace('/','')
 
-    def get_kodex_keeper(self):
-        return re_user.findall(self.get_wiki_page('volunteers').content_md)[0]
+    def get_codex_keeper(self):
+        return re_user.findall(self.get_wiki_page('codexkeeper').content_md)[0]
 
     def get_mods(self):
         self.sleep()
@@ -113,9 +112,6 @@ class TagBot:
         # first element of every group should hold correctly capitalized title
         return "".join(["%s\n" % x[0].original for x in groups])
              
-    def has_tagging_permissions(self, user):
-        pass
-
     def has_new_tags(self, comment):
         return comment.body.startswith('tags:') and comment.created > self.last_seen
 
@@ -124,12 +120,20 @@ class TagBot:
         sleep(5) 
 
     def update_wiki_page(self, comment):
+        reply = ''
         tmp = comment.body.replace(",", " ")
-        tags = [ x.title() for x in tmp.split() if x.lower() in self.tags or '-%s'%x.lower() in self.tags]
+        added = [ x.title() for x in tmp.split() if x.lower() in self.tags ]
+        removed = [ x.title() for x in tmp.split() if  x.startswith('-') and re.sub(r'^-','',x).lower() in self.tags ]
 
-        log.debug("found tags: %s" % ",".join(tags))
+        log.debug("found tags: %s" % ",".join(added + removed))
 
-        for tag in tags:
+
+        if comment.author.name != comment.submission.author.name or comment.author.name in self.mods:
+            removed = []
+            reply += 'Only the submitter or one of the mods can remove tags! sorry!\n\n'
+
+
+        for tag in added + removed:
             text = ""
             basetag = tag
 
@@ -141,22 +145,21 @@ class TagBot:
                 pass
 
             if tag.startswith('-'):
-                self.edit_wiki_page(basetag, sort_wiki_page(text, tag))
+                self.edit_wiki_page(basetag, sort_wiki_page(text, tag, comment.submission.permalink))
             else:
                 text += '* [%s](%s)\n' % (comment.submission.title, comment.submission.permalink)
                 self.edit_wiki_page(tag, sort_wiki_page(text, tag))
 
         
-        links = [ "[%s](/r/%s/wiki/tags/%s)" % (tag.title(), self.subreddit, tag.title()) for tag in tags if not tag.startswith('-')]
-        if links: msg = "Verified tags: %s" % ", ".join(links)
+        links = [ "[%s](/r/%s/wiki/tags/%s)" % (tag.title(), self.subreddit, tag.title()) for tag in added]
+        if links: reply = "Verified tags: %s" % ", ".join(links)
 
-        msg += '\n\n'
+        reply += '\n\n'
 
-        removed = [tag.title for tag in tags if tag.startswith('-') ]
-        if removed :msg += "Removed tags: %s" % ", ".join(removed)
+        if removed: reply += "Removed tags: %s" % ", ".join(removed)
 
-        msg += '\n\nAccepted list of tags can be found here: /r/HFYBeta/wiki/tags/accepted'
-        comment.reply(msg)
+        reply += '\n\nAccepted list of tags can be found here: /r/HFYBeta/wiki/tags/accepted'
+        comment.reply(reply)
 
 
     def edit_wiki_page(self, tag, text):

@@ -16,6 +16,7 @@ log.basicConfig(level=log.DEBUG)
 re_name = re.compile('\[([^]]*)\]')
 re_perm = re.compile('\(([^]]*)\)')
 re_user = re.compile('/u/([^\s]*)')
+re_subreddit = re.compile('/r/([^/]*)')
 
 class SortableLine:
     def __init__(self, msg):
@@ -170,8 +171,38 @@ class TagBot:
         else:
             return True
 
+    def get_submission(self, permalink):
+        self.sleep()
+
+        try:
+            submission = self.account.get_submission(permalink)
+            subreddit = re_subreddit.findall(permalink)
+
+            if subreddit = self.subreddit: return submission
+        except Exception, e:
+            log.exception(e, 'Not a submission?')
+
+    def check_messages(self):
+        self.sleep()
+        messages = list(self.account.get_unread())
+
+        log.debug('checking messages')
+
+        for msg in messages:
+            submission = self.get_submission(msg.subject)
+            if not submission:
+                msg.mark_as_read()
+                continue
+
+            log.debug('message for %s', msg.subject)
+            msg.submission = submission
+
+            if msg.body.startswith('tags:'):
+                self.update_wiki_page(msg)
+
         
     def run(self):
+        config_counter = 0
 
         while True:
             log.debug('waking up')
@@ -186,11 +217,17 @@ class TagBot:
 
                     if tag_comment.created > self.last_seen:
                         self.last_seen = tag_comment.created
+
+                self.check_messages();
             finally:
                 self.save_last_seen()
 
             log.debug('sleeping...')
             sleep(30)
+
+            if config_counter == 5:
+                self.read_config()
+                conifg_counter = 0
 
 
 def main():

@@ -138,10 +138,7 @@ class TagBot:
 
             if tag.startswith('-'): basetag = tag[1:]
 
-            try :
-                text = self.get_wiki_page(basetag).content_md
-            except:
-                pass
+            text = self.get_wiki_page(basetag).content_md
 
             if tag.startswith('-'):
                 self.edit_wiki_page(basetag, sort_wiki_page(text, tag, comment.submission.permalink))
@@ -170,7 +167,10 @@ class TagBot:
 
     def get_wiki_page(self, tag):
         self.sleep()
-        return self.account.get_wiki_page(self.subreddit, 'tags/'+tag)
+        try:
+            return self.account.get_wiki_page(self.subreddit, 'tags/'+tag)
+        except:
+            log.exception('No such page?')
 
     def save_last_seen(self):
         self.sleep()
@@ -215,6 +215,11 @@ class TagBot:
         log.debug('checking messages')
 
         for msg in messages:
+            if msg.subject == 'reload':
+                self.read_config()
+                msg.mark_as_read()
+                continue
+
             submission = self.get_submission(msg.subject)
             log.debug('checking %s' % msg.subject)
             if not submission:
@@ -228,6 +233,22 @@ class TagBot:
             if msg.body.startswith('tags:'):
                 self.update_wiki_page(msg)
                 msg.mark_as_read()
+
+            if msg.body.starstwith('lock:'):
+                if msg.author.name != submission.author.name and msg.author.name not in self.mods:
+                    msg.mark_as_read()
+                    msg.reply('Only author or mod can lock a thread')
+
+                else:
+                    content = ''
+                    locked = self.get_wiki_page('locked')
+                    if locked: content = locked.content_md
+
+                    content += submission.url 
+                    content += '\n\n'
+                    
+                    self.update_locks(content)
+
 
             log.debug("discarding")
             msg.mark_as_read()

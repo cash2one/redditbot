@@ -127,8 +127,7 @@ class TagBot:
 
         log.debug("found tags: %s" % ",".join(added + removed))
 
-
-        if comment.author.name != comment.submission.author.name or comment.author.name in self.mods:
+        if comment.author.name != comment.submission.author.name and comment.author.name not in self.mods:
             removed = []
             reply += 'Only the submitter or one of the mods can remove tags! sorry!\n\n'
 
@@ -167,7 +166,6 @@ class TagBot:
         return self.account.edit_wiki_page(self.subreddit, 'tags/'+tag, text)
 
     def get_comments(self):
-        self.sleep()
         return self.account.get_comments(self.subreddit, limit=50)
 
     def get_wiki_page(self, tag):
@@ -187,7 +185,7 @@ class TagBot:
         try:
             return self.account.send_message(recipient, subject, message, raise_captcha_exception=True)
         except Exception, e:
-            log.exception(e, 'Captcha exception?')
+            log.exception('Captcha exception?')
 
     def verify_user(self, comment):
         if comment.author.name not in self.volunteers + [comment.submission.author.name] + self.mods:
@@ -208,7 +206,7 @@ class TagBot:
 
             log.debug('got message with subject %s for bot configured on subreddit %s' % (permalink, self.subreddit))
         except Exception, e:
-            log.exception(e, 'Not a submission?')
+            log.exception('Not a submission?')
 
     def check_messages(self):
         self.sleep()
@@ -218,6 +216,7 @@ class TagBot:
 
         for msg in messages:
             submission = self.get_submission(msg.subject)
+            log.debug('checking %s' % msg.subject)
             if not submission:
                 msg.mark_as_read()
                 log.debug('discarding')

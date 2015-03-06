@@ -32,8 +32,10 @@ class SortableLine:
 
         self.sortby = self.name.lower()
 
-def sort_wiki_page(page, tag):
+def sort_wiki_page(page, tag, permalink):
     tmp = [ SortableLine(line) for line in page.split('\n') if line and not line.startswith('#') ]
+
+    if tag.startswith('-'): tmp = [ x for x in tmp if x.permalink != permalink ]
            
     keys = []
     groups = []
@@ -117,24 +119,36 @@ class TagBot:
 
     def update_wiki_page(self, comment):
         tmp = comment.body.replace(",", " ")
-        tags = [ x.title() for x in tmp.split() if x.lower() in self.tags ]
+        tags = [ x.title() for x in tmp.split() if x.lower() in self.tags or '-%s'%x.lower() in self.tags]
 
         log.debug("found tags: %s" % ",".join(tags))
 
         for tag in tags:
             text = ""
+            basetag = tag
+
+            if tag.startswith('-'): basetag = tag[1:]
 
             try :
-                text = self.get_wiki_page(tag).content_md
+                text = self.get_wiki_page(basetag).content_md
             except:
                 pass
 
-            text += '* [%s](%s)\n' % (comment.submission.title, comment.submission.permalink)
-            self.edit_wiki_page(tag, sort_wiki_page(text, tag))
+            if tag.startswith('-'):
+                self.edit_wiki_page(basetag, sort_wiki_page(text, tag))
+            else:
+                text += '* [%s](%s)\n' % (comment.submission.title, comment.submission.permalink)
+                self.edit_wiki_page(tag, sort_wiki_page(text, tag))
 
         
-        links = [ "[%s](/r/%s/wiki/tags/%s)" % (tag.title(), self.subreddit, tag.title()) for tag in tags ]
-        msg = "Verified tags: %s" % ", ".join(links)
+        links = [ "[%s](/r/%s/wiki/tags/%s)" % (tag.title(), self.subreddit, tag.title()) for tag in tags if not tag.startswith('-')]
+        if links: msg = "Verified tags: %s" % ", ".join(links)
+
+        msg += '\n\n'
+
+        removed = [tag.title for tag in tags if tag.startswith('-') ]
+        if removed :msg += "Removed tags: %s" % ", ".join(removed)
+
         msg += '\n\nAccepted list of tags can be found here: /r/HFYBeta/wiki/tags/accepted'
         comment.reply(msg)
 
@@ -178,7 +192,9 @@ class TagBot:
             submission = self.account.get_submission(permalink)
             subreddit = re_subreddit.findall(permalink)
 
-            if subreddit = self.subreddit: return submission
+            if subreddit and subreddit[0] == self.subreddit:  return submission
+
+            log.debug('got message with subject %s for bot configured on subreddit %s' % (permalink, self.subreddit))
         except Exception, e:
             log.exception(e, 'Not a submission?')
 
@@ -192,14 +208,18 @@ class TagBot:
             submission = self.get_submission(msg.subject)
             if not submission:
                 msg.mark_as_read()
+                log.debug('discarding')
                 continue
 
-            log.debug('message for %s', msg.subject)
+            log.debug('message subject %s' % msg.subject)
             msg.submission = submission
 
             if msg.body.startswith('tags:'):
                 self.update_wiki_page(msg)
+                msg.mark_as_read()
 
+            log.debug("discarding")
+            msg.mark_as_read()
         
     def run(self):
         config_counter = 0

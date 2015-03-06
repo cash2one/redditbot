@@ -6,6 +6,11 @@ import logging as log
 from time import sleep
 from itertools import groupby
 
+#TODO:
+
+# - a way to remove stories from tag pages
+# - if submitter comments treat it as a final tagging
+
 log.basicConfig(level=log.DEBUG)
 
 re_name = re.compile('\[([^]]*)\]')
@@ -60,7 +65,6 @@ def format_for_wiki(lines, tag):
     return "".join(ret)
 
 
-
 class TagBot:
     def __init__(self, subreddit):
         self.subreddit = subreddit
@@ -69,8 +73,16 @@ class TagBot:
         self.account = praw.Reddit(user_agent='redditbot 0.1 by /u/HFY_tag_bot')
         self.account.login(os.environ['REDDIT_USER'], os.environ['REDDIT_PASS'])
 
+        self.read_config()
+
+    def read_config(self):
         self.tags = [ x.lower() for x in self.get_accepted_tags() ]
         self.volunteers = self.get_volunteers()
+        self.mods = self.get_mods()
+
+    def get_mods(self):
+        self.sleep()
+        return [x.name for x in self.account.get_subreddit(self.subreddit).get_moderators()]
 
     def get_volunteers(self):
         return re_user.findall(self.get_wiki_page('volunteers').content_md)
@@ -151,7 +163,7 @@ class TagBot:
         return self.account.send_message(recipient, subject, message)
 
     def verify_user(self, comment):
-        if comment.author.name not in self.volunteers + [comment.submission.author.name]:
+        if comment.author.name not in self.volunteers + [comment.submission.author.name] + self.mods:
             log.debug("Unauthorized tagging attempt")
             comment.reply("You need to contact /u/Lord_Fuzzy to be able to volunteer tags!")
             return False
@@ -172,7 +184,7 @@ class TagBot:
                     if self.verify_user(tag_comment): 
                         self.update_wiki_page(tag_comment)
 
-                    if tag_comment.created > self.last_seen
+                    if tag_comment.created > self.last_seen:
                         self.last_seen = tag_comment.created
             finally:
                 self.save_last_seen()
@@ -188,21 +200,6 @@ def main():
         except Exception, e:
             log.exception(e)
             sleep(120)
-
-
-def test1():
-    test = """* [Test Imgur Link](http://www.reddit.com/r/HFYBeta/comments/2gaib5/test_imgur_link/)
-    * [Text](http://www.reddit.com/r/HFYBeta/comments/2j10eo/text/)
-    * [Welcome to HFYBeta](http://www.reddit.com/r/HFYBeta/comments/2my43g/welcome_to_hfybeta/)
-    * [Test](http://www.reddit.com/r/HFYBeta/comments/2xxjwh/test/)
-    * [test](http://www.reddit.com/r/HFYBeta/comments/2xxjwh/test/)
-    * [Abd](http://www.reddit.com/r/HFYBeta/comments/2xxjwh/test/)
-    * [tesT](http://www.reddit.com/r/HFYBeta/comments/2xxjwh/test/)
-    * [Abc](http://www.reddit.com/r/HFYBeta/comments/2xxjwh/test/)
-    """
-
-    print sort_wiki_page(test)
-        
 
 if __name__ == '__main__':
     main()        

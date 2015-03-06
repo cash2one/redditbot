@@ -20,9 +20,9 @@ class SortableLine:
         if not self.name: self.name = 'BAD entry format'
         else: self.name = self.name[0]
 
-        self.permlink = re_perm.findall(msg)
-        if not self.permlink: self.permlink= 'BAD entry format'
-        else: self.permlink= self.permlink[0]
+        self.permalink = re_perm.findall(msg)
+        if not self.permalink: self.permalink= 'BAD entry format'
+        else: self.permalink= self.permalink[0]
 
         self.sortby = self.name.lower()
 
@@ -55,7 +55,7 @@ def format_for_wiki(lines, tag):
             ret.append('\n\n')
             ret.append('##%s' % anchor.upper())
             ret.append('\n\n')
-        ret.append("* [%s](%s)\n" % (line.name, line.permlink))
+        ret.append("* [%s](%s)\n" % (line.name, line.permalink))
 
     return "".join(ret)
 
@@ -69,12 +69,11 @@ class TagBot:
         self.account = praw.Reddit(user_agent='redditbot 0.1 by /u/HFY_tag_bot')
         self.account.login(os.environ['REDDIT_USER'], os.environ['REDDIT_PASS'])
 
-        self.tags = self.get_accepted_tags()
+        self.tags = [ x.lower() for x in self.get_accepted_tags() ]
         self.volunteers = self.get_volunteers()
 
     def get_volunteers(self):
         return re_user.findall(self.get_wiki_page('volunteers').content_md)
-
     
     def get_accepted_tags(self):
         return re_name.findall(self.get_wiki_page('accepted').content_md)
@@ -97,7 +96,7 @@ class TagBot:
         pass
 
     def has_new_tags(self, comment):
-        return comment.body.startswith('test:') and comment.created > self.last_seen
+        return comment.body.startswith('tags:') and comment.created > self.last_seen
 
 
     def sleep(self):
@@ -105,7 +104,7 @@ class TagBot:
 
     def update_wiki_page(self, comment):
         tmp = comment.body.replace(",", " ")
-        tags = [ x for x in tmp.split() if x in self.tags ]
+        tags = [ x.title() for x in tmp.split() if x.lower() in self.tags ]
 
         log.debug("found tags: %s" % ",".join(tags))
 
@@ -121,12 +120,11 @@ class TagBot:
             self.edit_wiki_page(tag, sort_wiki_page(text, tag))
 
         
-        links = [ "[%s](/r/%s/wiki/tags/%s)" % (tag, self.subreddit, tag) for tag in tags ]
+        links = [ "[%s](/r/%s/wiki/tags/%s)" % (tag.title(), self.subreddit, tag.title()) for tag in tags ]
         msg = "Verified tags: %s" % ", ".join(links)
         msg += '\n\nAccepted list of tags can be found here: /r/HFYBeta/wiki/tags/accepted'
         comment.reply(msg)
 
-        self.last_seen = comment.created
 
     def edit_wiki_page(self, tag, text):
         log.debug('updating wiki page %s' % (self.subreddit + '/tags/'+tag,))
@@ -153,10 +151,9 @@ class TagBot:
         return self.account.send_message(recipient, subject, message)
 
     def verify_user(self, comment):
-        if comment.author.name not in self.volunteers:
+        if comment.author.name not in self.volunteers + [comment.submission.author.name]:
             log.debug("Unauthorized tagging attempt")
-            comment.reply("You need to contact /u/LordFuzzy to be able to volunteer tags!")
-            self.last_seen = comment.last_seen
+            comment.reply("You need to contact /u/Lord_Fuzzy to be able to volunteer tags!")
             return False
         else:
             return True
@@ -171,9 +168,10 @@ class TagBot:
 
             try:
                 for tag_comment in  [ x for x in comments if self.has_new_tags(x) ]:
-                    log.debug('Processing comment %s' % x.permalink)
-                    if not self.verify_user(tag_comment): continue
-                    self.update_wiki_page(tag_comment)
+                    log.debug('Processing comment %s' % tag_comment.permalink)
+                    if self.verify_user(tag_comment): 
+                        self.update_wiki_page(tag_comment)
+                    self.last_seen = tag_comment.created
             finally:
                 self.save_last_seen()
 
@@ -182,11 +180,12 @@ class TagBot:
 
 
 def main():
-    try:
-        TagBot('HFYBeta').run()
-    except Exception, e:
-        log.exception(e)
-        sleep(120)
+    while True:
+        try:
+            TagBot('HFYBeta').run()
+        except Exception, e:
+            log.exception(e)
+            sleep(120)
 
 
 def test1():

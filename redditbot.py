@@ -171,7 +171,9 @@ class TagBot:
                     log.debug('Processing comment %s' % tag_comment.permalink)
                     if self.verify_user(tag_comment): 
                         self.update_wiki_page(tag_comment)
-                    self.last_seen = tag_comment.created
+
+                    if tag_comment.created > self.last_seen
+                        self.last_seen = tag_comment.created
             finally:
                 self.save_last_seen()
 

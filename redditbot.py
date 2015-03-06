@@ -10,6 +10,7 @@ from itertools import groupby
 
 # - a way to remove stories from tag pages
 # - if submitter comments treat it as a final tagging
+# - error messages when config is missing
 
 log.basicConfig(level=log.DEBUG)
 
@@ -17,6 +18,7 @@ re_name = re.compile('\[([^]]*)\]')
 re_perm = re.compile('\(([^]]*)\)')
 re_user = re.compile('/u/([^\s]*)')
 re_subreddit = re.compile('/r/([^/]*)')
+
 
 class SortableLine:
     def __init__(self, msg):
@@ -82,6 +84,10 @@ class TagBot:
         self.tags = [ x.lower() for x in self.get_accepted_tags() ]
         self.volunteers = self.get_volunteers()
         self.mods = self.get_mods()
+        self.codex_keeper = self.get_kodex_keeper().replace('/u/','').replace('/','')
+
+    def get_kodex_keeper(self):
+        return re_user.findall(self.get_wiki_page('volunteers').content_md)[0]
 
     def get_mods(self):
         self.sleep()
@@ -175,12 +181,15 @@ class TagBot:
 
     def send_message(self, recipient, subject, message):
         self.sleep()
-        return self.account.send_message(recipient, subject, message)
+        try:
+            return self.account.send_message(recipient, subject, message, raise_captcha_exception=True)
+        except Exception, e:
+            log.exception(e, 'Captcha exception?')
 
     def verify_user(self, comment):
         if comment.author.name not in self.volunteers + [comment.submission.author.name] + self.mods:
             log.debug("Unauthorized tagging attempt")
-            comment.reply("You need to contact /u/Lord_Fuzzy to be able to volunteer tags!")
+            comment.reply("You need to contact /u/%s  to be able to volunteer tags!" % self.codex_keeper)
             return False
         else:
             return True

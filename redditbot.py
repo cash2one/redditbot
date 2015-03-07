@@ -127,7 +127,7 @@ class TagBot:
         return "".join(["%s\n" % x[0].original for x in groups])
              
     def has_new_tags(self, comment):
-        return comment.body.startswith('tags:') \ 
+        return comment.body.startswith('tags:') \
                and comment.created > self.last_seen \
                and not comment.edited
 

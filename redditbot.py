@@ -23,17 +23,16 @@ class SortableLine:
     def __init__(self, msg):
         self.original = msg
 
-        if msg.find('[[') != -1: # uh oh we have brackets in the story title
-            a1 = msg.rfind(']')
-            b1 = msg.rfind(']',  0, a1)
-            self.name = msg[b1+1:a1].strip()
-            if not self.name: self.name = 'BAD entry format'
-        else:
-            self.name = re.findall(re_name, msg)
-            if not self.name: self.name = 'BAD entry format'
-            else: 
-                if self.name.startswith('['): self.name = re.findall(re_title, self.name)
-                self.name = self.name[0].strip()
+        import ipdb
+        ipdb.set_trace()
+
+
+        self.name = re.findall(re_name, msg)
+        if not self.name: 
+            self.name = 'BAD entry format'
+        else: 
+            if self.name[0].startswith('['): self.name = re.findall(re_title, self.name[0])
+            self.name = self.name[0].strip()
 
         self.permalink = re_perm.findall(msg)
         if not self.permalink: self.permalink= 'BAD entry format'
@@ -112,21 +111,6 @@ class TagBot:
     def get_accepted_tags(self):
         return re_name.findall(self.get_wiki_page('accepted').content_md)
 
-
-    #TODO: make this more generic
-    def sort_wiki_page(page):
-        tmp = [ SortableLine(line) for line in page.split('\n') if line ]
-
-        keys = []
-        groups = []
-
-        for k, g in groupby(tmp, lambda x: x.lower):
-            keys.append(k)
-            groups.append(list(g))
-
-        # first element of every group should hold correctly capitalized title
-        return "".join(["%s\n" % x[0].original for x in groups])
-             
     def has_new_tags(self, comment):
         return comment.body.startswith('tags:') \
                and comment.created > self.last_seen \

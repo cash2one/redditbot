@@ -5,6 +5,7 @@ import re
 import logging as log
 from time import sleep
 from itertools import groupby
+from ipdb import set_trace as st
 
 #TODO:
 
@@ -16,23 +17,19 @@ re_user = re.compile('/u/([^\s]*)')
 re_subreddit = re.compile('/r/([^/]*)')
 re_lock = re.compile('\* ([^\s]*)')
 re_name = re.compile('\[(.*)\]')
-re_perm = re.compile('\(([^]]*)\)')
-re_title = re.compile('](.*)')
+re_title = re.compile('\[(oc|pi)\]', re.IGNORECASE)
+re_perm = re.compile('\((http[^)]*)\)')
+
 
 class SortableLine:
     def __init__(self, msg):
         self.original = msg
 
-        import ipdb
-        ipdb.set_trace()
-
-
         self.name = re.findall(re_name, msg)
-        if not self.name: 
+        if not self.name:
             self.name = 'BAD entry format'
-        else: 
-            if self.name[0].startswith('['): self.name = re.findall(re_title, self.name[0])
-            self.name = self.name[0].strip()
+        else:
+            self.name = re_title.sub('', self.name[0]).strip()
 
         self.permalink = re_perm.findall(msg)
         if not self.permalink: self.permalink= 'BAD entry format'
@@ -40,8 +37,11 @@ class SortableLine:
 
         self.sortby = self.name.lower()
 
+
 def sort_wiki_page(page, tag, permalink=None):
+    st()
     tmp = [ SortableLine(line) for line in page.split('\n') if line and not line.startswith('#') ]
+
 
     if tag.startswith('-'): tmp = [ x for x in tmp if x.permalink != permalink ]
            
@@ -121,6 +121,7 @@ class TagBot:
         sleep(5) 
 
     def update_wiki_page(self, comment):
+        st()
         if comment.submission.url in self.locked:
             comment.reply("This submission is no longer accepting tags")
             return
@@ -143,6 +144,9 @@ class TagBot:
             if tag.startswith('-'): basetag = tag[1:]
 
             text = self.get_wiki_page(basetag).content_md
+
+            st()
+            print 'AAAAAAAAAAAAAAAAAa'
 
             if tag.startswith('-'):
                 self.edit_wiki_page(basetag, sort_wiki_page(text, tag, comment.submission.permalink))

@@ -12,12 +12,12 @@ from itertools import groupby
 
 log.basicConfig(level=log.DEBUG)
 
-re_name = re.compile('\[([^]]*)\]')
-re_perm = re.compile('\(([^]]*)\)')
 re_user = re.compile('/u/([^\s]*)')
 re_subreddit = re.compile('/r/([^/]*)')
 re_lock = re.compile('\* ([^\s]*)')
-re_title = re.compile('\]([^]]*)\]')
+re_name = re.compile('\[(.*)\]')
+re_perm = re.compile('\(([^]]*)\)')
+re_title = re.compile('](.*)')
 
 class SortableLine:
     def __init__(self, msg):
@@ -31,11 +31,13 @@ class SortableLine:
         else:
             self.name = re.findall(re_name, msg)
             if not self.name: self.name = 'BAD entry format'
-            else: self.name = self.name[0].strip()
+            else: 
+                if self.name.startswith('['): self.name = re.findall(re_title, self.name)
+                self.name = self.name[0].strip()
 
         self.permalink = re_perm.findall(msg)
         if not self.permalink: self.permalink= 'BAD entry format'
-        else: self.permalink= self.permalink[0]
+        else: self.permalink= self.permalink[-1]
 
         self.sortby = self.name.lower()
 

@@ -19,7 +19,6 @@ re_subreddit = re.compile('/r/([^/]*)')
 re_lock = re.compile('\* ([^\s]*)')
 re_title = re.compile('\]([^]]*)\]')
 
-
 class SortableLine:
     def __init__(self, msg):
         self.original = msg
@@ -318,7 +317,7 @@ def main():
             TagBot('HFYBeta').run()
         except Exception, e:
             log.exception(e)
-            sleep(120)
+            sleep(140)
 
 if __name__ == '__main__':
     main()        

@@ -20,47 +20,38 @@ re_title = re.compile('\[(oc|pi|jenkinsverse|j-verse|jverse)\]', re.IGNORECASE)
 re_perm = re.compile('\((http[^)]*)\)')
 
 
+# expected format is: [title](link) - by: [author](link-to-authors-wiki)
 class SortableLine:
-    def __init__(self, msg):
-        self.original = msg
+    def __init__(self, line):
+        self.title_md = line 
 
-        self.name = re.findall(re_name, msg)
-        if not self.name:
-            self.name = 'BAD entry format'
-        else:
+        try:
+            self.name = re.findall(re_name, msg)
             self.name = re_title.sub('', self.name[0]).strip()
 
-        self.permalink = re_perm.findall(msg)
-        if not self.permalink: self.permalink= 'BAD entry format'
-        else: self.permalink= self.permalink[-1]
+            self.permalink = re_perm.findall(msg)
+            else: self.permalink= self.permalink[-2]
 
-        self.sortby = self.name.lower()
+            self.sortby = self.name.lower()
+        except Exception, e:
+            log.exception('Incorrect format!')
+            self.sortby = line
+            self.name = line
 
 
-def sort_wiki_page(page, tag, permalink=None):
-    tmp = [ SortableLine(line) for line in page.split('\n') if line and not line.startswith('#') ]
-
-
-    if tag.startswith('-'): tmp = [ x for x in tmp if x.permalink != permalink ]
-           
+def sort_titles(titles):
     keys = []
     groups = []
 
-    for k, g in groupby(tmp, lambda x: x.sortby):
+    for k, g in groupby(titles, lambda x: x.sortby):
         keys.append(k)
         groups.append(list(g))
 
     # first element of every group should hold correctly capitalized title
     
-    lines = [x[0] for x in sorted(groups, key=lambda x: x[0].sortby)]
-    return  format_for_wiki(lines, tag)
+    return [x[0] for x in sorted(groups, key=lambda x: x[0].sortby)]
 
-def strip_title(title):
-    i = title.rfind(']') + 1
-    return title[i:].strip()
-
-#works on already sorted SortableLines
-def format_for_wiki(lines, tag):
+def create_wiki_page(lines, tag):
     anchor = None
     if tag.startswith('-'): tag = tag[1:]
     ret = []
@@ -74,7 +65,7 @@ def format_for_wiki(lines, tag):
             ret.append('\n\n')
             ret.append('##%s' % anchor.upper())
             ret.append('\n\n')
-        ret.append("* [%s](%s)\n" % (line.name, line.permalink))
+        ret.append(line.title_md)
 
     return "".join(ret)
 
@@ -119,13 +110,15 @@ class TagBot:
         sleep(5) 
 
     def update_wiki_page(self, comment):
+        reply = ''
+
         if comment.submission.url in self.locked:
             comment.reply("This submission is no longer accepting tags")
             return
-        reply = ''
+
         tmp = comment.body.replace(",", " ")
         added = [ x.title() for x in tmp.split() if x.lower() in self.tags ]
-        removed = [ x.title() for x in tmp.split() if  x.startswith('-') and re.sub(r'^-','',x).lower() in self.tags ]
+        removed = [ x[1:].title() for x in tmp.split() if  x.startswith('-') and re.sub(r'^-','',x).lower() in self.tags ]
 
         log.debug("found tags: %s" % ",".join(added + removed))
 
@@ -133,24 +126,19 @@ class TagBot:
             removed = []
             reply += 'Only the submitter or one of the mods can remove tags! sorry!\n\n'
 
-
         for tag in added + removed:
-            text = ""
-            basetag = tag
+            page = self.get_wiki_page(basetag).content_md
+            lines = [ SortableLine(line) for line in page.split('\n') if line 
+                                                                      and not line.startswith('#') 
+                                                                      and tag not in removed ]
+            if tag not in removed:
+                lines += SortableLine('* [%s](%s) - by: [%s](/r/%s/wiki/%s)\n' % (comment.submission.title, 
+                                                                                  comment.submission.permalink, 
+                                                                                  comment.submission.author.name, 
+                                                                                  self.subreddit,
+                                                                                  comment.submission.author.name))
 
-            if tag.startswith('-'): basetag = tag[1:]
-
-            text = self.get_wiki_page(basetag).content_md
-
-            if tag.startswith('-'):
-                self.edit_wiki_page(basetag, sort_wiki_page(text, tag, comment.submission.permalink))
-            else:
-                text += '* [%s](%s) - by: [%s](/r/%s/wiki/%s)\n' % (comment.submission.title, 
-                                                                    comment.submission.permalink, 
-                                                                    comment.submission.author.name, 
-                                                                    self.subreddit,
-                                                                    comment.submission.author.name)
-                self.edit_wiki_page(tag, sort_wiki_page(text, tag))
+            self.edit_wiki_page(tag, create_wiki_page(sort_titles(lines), tag))
 
         
         links = [ "[%s](/r/%s/wiki/tags/%s)" % (tag.title(), self.subreddit, tag.title()) for tag in added]

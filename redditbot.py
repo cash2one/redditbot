@@ -145,7 +145,11 @@ class TagBot:
             if tag.startswith('-'):
                 self.edit_wiki_page(basetag, sort_wiki_page(text, tag, comment.submission.permalink))
             else:
-                text += '* [%s](%s)\n' % (comment.submission.title, comment.submission.permalink)
+                text += '* [%s](%s) - by: [%s](/r/%s/wiki/%s)\n' % (comment.submission.title, 
+                                                                    comment.submission.permalink, 
+                                                                    comment.submission.author.name, 
+                                                                    self.subreddit,
+                                                                    comment.submission.author.name)
                 self.edit_wiki_page(tag, sort_wiki_page(text, tag))
 
         

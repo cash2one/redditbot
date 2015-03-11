@@ -309,6 +309,7 @@ class TagBot:
 
             try:
                 for tag_comment in  comments:
+
                     if not tag_comment.author: tag_comment.author = DummyAuthor('deleted')
                     if not tag_comment.submission.author: tag_comment.submission.author = DummyAuthor('deleted')
 

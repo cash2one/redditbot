@@ -76,14 +76,24 @@ class TagBot:
         self.subreddit = subreddit
         self.last_seen = 0
         
-        self.account = praw.Reddit(user_agent='redditbot 0.1 by /u/HFY_tag_bot')
-        self.account.login(os.environ['REDDIT_USER'], os.environ['REDDIT_PASS'])
+        self._account = praw.Reddit(user_agent='redditbot 0.1 by /u/HFY_tag_bot')
+        self._account.login(os.environ['REDDIT_USER'], os.environ['REDDIT_PASS'])
+
+        self.wiki_modification_time = {}
 
         self.read_config()
+
+    def account(self, sleep_time=5):
+        sleep(sleep_time)
+        return self._account
 
     def read_config(self):
         try:
             self.tags = [ x.lower() for x in self.get_accepted_tags() ]
+
+            for t in self.tags:
+                if t not in self.wiki_modification_time: self.wiki_modification_time[t] = 0
+
             self.volunteers = self.get_volunteers()
             self.mods = self.get_mods()
             self.codex_keeper = self.get_codex_keeper().replace('/u/','').replace('/','')
@@ -96,8 +106,7 @@ class TagBot:
         return re_user.findall(self.get_wiki_page('codexkeeper').content_md)[0]
 
     def get_mods(self):
-        self.sleep()
-        return [x.name for x in self.account.get_subreddit(self.subreddit).get_moderators()]
+        return [x.name for x in self.account().get_subreddit(self.subreddit).get_moderators()]
 
     def get_volunteers(self):
         return re_user.findall(self.get_wiki_page('volunteers').content_md)
@@ -109,10 +118,6 @@ class TagBot:
         return comment.body.startswith('tags:') \
                and comment.created > self.last_seen \
                and not comment.edited
-
-
-    def sleep(self):
-        sleep(5) 
 
     def update_wiki_page(self, comment):
         reply = ''
@@ -141,8 +146,6 @@ class TagBot:
                                                                                       self.subreddit,
                                                                                       comment.submission.author.name)) ]
             log.debug("updating %s [removing?: %s] for %s" % (tag, tag in removed, comment.submission.title))
-            import ipdb
-            ipdb.set_trace()
             md = create_wiki_page(sort_titles(lines), tag)
             self.edit_wiki_page(tag, md)
 
@@ -160,30 +163,26 @@ class TagBot:
 
     def edit_wiki_page(self, tag, text):
         log.debug('updating wiki page %s' % (self.subreddit + '/tags/'+tag,))
-        return self.account.edit_wiki_page(self.subreddit, 'tags/'+tag, text)
+        return self.account().edit_wiki_page(self.subreddit, 'tags/'+tag, text)
 
     def get_comments(self):
-        return self.account.get_comments(self.subreddit, limit=50)
+        return self.account().get_comments(self.subreddit, limit=50)
 
     def get_wiki_page(self, tag):
-        self.sleep()
         try:
-            return self.account.get_wiki_page(self.subreddit, 'tags/'+tag)
+            return self.account().get_wiki_page(self.subreddit, 'tags/'+tag)
         except:
             log.exception('No such page?')
 
     def save_last_seen(self):
-        self.sleep()
-        return self.account.edit_wiki_page(self.subreddit, 'tags/last_seen', self.last_seen)
+        return self.account().edit_wiki_page(self.subreddit, 'tags/last_seen', self.last_seen)
 
     def get_last_seen(self):
-        self.sleep()
-        return self.account.get_wiki_page(self.subreddit, 'tags/last_seen')
+        return self.account().get_wiki_page(self.subreddit, 'tags/last_seen')
 
     def send_message(self, recipient, subject, message):
-        self.sleep()
         try:
-            return self.account.send_message(recipient, subject, message, raise_captcha_exception=True)
+            return self.account().send_message(recipient, subject, message, raise_captcha_exception=True)
         except Exception, e:
             log.exception('Captcha exception?')
 
@@ -196,10 +195,9 @@ class TagBot:
             return True
 
     def get_submission(self, msg):
-        self.sleep()
 
         try:
-            submission = self.account.get_submission(msg.subject)
+            submission = self.account().get_submission(msg.subject)
             subreddit = re_subreddit.findall(permalink)
 
             if subreddit and subreddit[0] == self.subreddit:  return submission
@@ -211,8 +209,7 @@ class TagBot:
             msg.mark_as_read()
 
     def check_messages(self):
-        self.sleep()
-        messages = list(self.account.get_unread())
+        messages = list(self.account().get_unread())
 
         log.debug('checking messages')
 

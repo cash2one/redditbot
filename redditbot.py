@@ -44,7 +44,7 @@ class SortableLine:
             self.permalink = re_perm.findall(line)
             self.permalink= self.permalink[0]
 
-            self.sortby = self.permalink
+            self.sortby = self.title_md
         except Exception, e:
             log.exception('Incorrect format!')
             self.sortby = line
@@ -200,8 +200,8 @@ class TagBot:
             raise UnableToEditWikiError()
 
 
-    def get_comments(self):
-        return self.account().get_comments(self.subreddit, limit=5000)
+    def get_comments(self, limit=5000):
+        return self.account().get_comments(self.subreddit, limit=limit)
 
     def get_wiki_page(self, tag):
         try:
@@ -261,10 +261,11 @@ class TagBot:
                     self.update_wiki_page(tag_comment)
 
                 if tag_comment.created > self.last_seen:
-                    self.last_seen = tag_comment.created
+                    self.new_last_seen = tag_comment.created
             except Exception, e:
                 log.exception("Error processing a comment")
                 tag_comment.reply("There was an error processing your comment :( sorry. [%s]" % e.message)
+	self.last_seen = self.new_last_seen
             
 
     def check_messages(self):

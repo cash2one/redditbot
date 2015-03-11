@@ -6,6 +6,9 @@ import logging as log
 from time import sleep
 from itertools import groupby
 
+class UnableToEditWikiError(Exception): pass
+
+
 #TODO:
 
 # - error messages when config is missing
@@ -52,7 +55,7 @@ def sort_titles(titles):
     
     return [x[0] for x in sorted(groups, key=lambda x: x[0].sortby)]
 
-def create_wiki_page(lines, tag):
+def format_wiki_page(lines, tag):
     anchor = None
     if tag.startswith('-'): tag = tag[1:]
     ret = []
@@ -83,7 +86,7 @@ class TagBot:
 
         self.read_config()
 
-    def account(self, sleep_time=5):
+    def account(self, sleep_time=3):
         sleep(sleep_time)
         return self._account
 
@@ -100,7 +103,7 @@ class TagBot:
             self.read_locked()
         except Exception, e:
             log.exception("Unable to read config file! retrying in 30s")
-            sleep(30) 
+            sleep(15) 
 
     def get_codex_keeper(self):
         return re_user.findall(self.get_wiki_page('codexkeeper').content_md)[0]
@@ -138,6 +141,8 @@ class TagBot:
 
         for tag in added + removed:
             page = self.get_wiki_page(tag)
+            self.wiki_modification_time[tag] = page.revision_date
+
             lines = [ SortableLine(line) for line in re.findall(re_list, page.content_md) if tag not in removed ]
             if tag not in removed:
                 lines += [ SortableLine('* [%s](%s) - by: [%s](/r/%s/wiki/%s)\n\n' % (comment.submission.title, 
@@ -146,8 +151,10 @@ class TagBot:
                                                                                       self.subreddit,
                                                                                       comment.submission.author.name)) ]
             log.debug("updating %s [removing?: %s] for %s" % (tag, tag in removed, comment.submission.title))
-            md = create_wiki_page(sort_titles(lines), tag)
-            page.edit(md)
+            md = format_wiki_page(sort_titles(lines), tag)
+
+            if md != page.content_md:
+                self.edit_wiki_page(tag, md)
 
         
         links = [ "[%s](/r/%s/wiki/tags/%s)" % (tag.title(), self.subreddit, tag.title()) for tag in added]
@@ -161,9 +168,25 @@ class TagBot:
         comment.reply(reply)
 
 
+    # TODO: keeping times in class member seems idiotic i don't know why not just pass it as a parameter
+    #       probably have to change that
     def edit_wiki_page(self, tag, text):
         log.debug('updating wiki page %s' % (self.subreddit + '/tags/'+tag,))
+
+        log.debug('wiki mod time before edit: %s' % self.wiki_modification_time[tag])
+
         self.account().edit_wiki_page(self.subreddit, 'tags/'+tag, text)
+
+        # praw is caching wiki or something so we have to be sure that next call
+        # to get_wiki_page will actually return the right result
+        for i in range(10):
+            page = self.account().get_wiki_page(self.subreddit, 'tags/'+tag)
+            log.debug('wiki mod time: %s' % page.revision_date)
+            if self.wiki_modification_time[tag] < page.revision_date: break
+            sleep(2)
+        else:
+            raise UnableToEditWikiError()
+
 
     def get_comments(self):
         return self.account().get_comments(self.subreddit, limit=50)

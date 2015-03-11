@@ -137,8 +137,8 @@ class TagBot:
             reply += 'Only the submitter or one of the mods can remove tags! sorry!\n\n'
 
         for tag in added + removed:
-            page = self.get_wiki_page(tag).content_md
-            lines = [ SortableLine(line) for line in re.findall(re_list, page) if tag not in removed ]
+            page = self.get_wiki_page(tag)
+            lines = [ SortableLine(line) for line in re.findall(re_list, page.content_md) if tag not in removed ]
             if tag not in removed:
                 lines += [ SortableLine('* [%s](%s) - by: [%s](/r/%s/wiki/%s)\n\n' % (comment.submission.title, 
                                                                                       comment.submission.permalink, 
@@ -147,7 +147,7 @@ class TagBot:
                                                                                       comment.submission.author.name)) ]
             log.debug("updating %s [removing?: %s] for %s" % (tag, tag in removed, comment.submission.title))
             md = create_wiki_page(sort_titles(lines), tag)
-            self.edit_wiki_page(tag, md)
+            page.edit(md)
 
         
         links = [ "[%s](/r/%s/wiki/tags/%s)" % (tag.title(), self.subreddit, tag.title()) for tag in added]
@@ -163,7 +163,7 @@ class TagBot:
 
     def edit_wiki_page(self, tag, text):
         log.debug('updating wiki page %s' % (self.subreddit + '/tags/'+tag,))
-        return self.account().edit_wiki_page(self.subreddit, 'tags/'+tag, text)
+        self.account().edit_wiki_page(self.subreddit, 'tags/'+tag, text)
 
     def get_comments(self):
         return self.account().get_comments(self.subreddit, limit=50)
@@ -198,14 +198,15 @@ class TagBot:
 
         try:
             submission = self.account().get_submission(msg.subject)
-            subreddit = re_subreddit.findall(permalink)
+            subreddit = re_subreddit.findall(submission.permalink)
 
             if subreddit and subreddit[0] == self.subreddit:  return submission
 
             log.debug('got message with subject %s for bot configured on subreddit %s' % (permalink, self.subreddit))
+            msg.reply("I'can only work on %s this is a submission to %s" % (self.subreddit, subreddit))
         except Exception, e:
             log.exception('Not a submission?')
-            msg.reply("Unable to get submision %s from url: " % msg.subject)
+            msg.reply("I'm sorry i can't seem to get submision from url: %s\n\nYou will have to try again :(\n\n(Error: %s)" % msg.subject, e.message)
             msg.mark_as_read()
 
     def check_messages(self):
@@ -215,6 +216,10 @@ class TagBot:
 
         for msg in messages:
             if msg.subject == 'reload':
+                if  msg.author.name not in self.mods:
+                    msg.mark_as_read()
+                    msg.reply("Nice try, but you're not a mod ;)")
+
                 self.read_config()
                 msg.reply("Settings have been reloaded")
                 msg.mark_as_read()

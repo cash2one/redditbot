@@ -14,23 +14,24 @@ log.basicConfig(level=log.DEBUG)
 
 re_user = re.compile('/u/([^\s]*)')
 re_subreddit = re.compile('/r/([^/]*)')
-re_lock = re.compile('\* ([^\s]*)')
+re_locked = re.compile('\* ([^\s]*)')
+re_list = re.compile('\* [^\n]*')
 re_name = re.compile('\[(.*)\]')
-re_title = re.compile('\[(oc|pi|jenkinsverse|j-verse|jverse)\]', re.IGNORECASE)
+re_title = re.compile('\[(oc|pi|jenkinsverse|j-verse|jverse|misc|nsfw)\]', re.IGNORECASE)
 re_perm = re.compile('\((http[^)]*)\)')
 
 
-# expected format is: [title](link) - by: [author](link-to-authors-wiki)
+# expected format is: "* [title](link) - by: [author](link-to-authors-wiki)"
 class SortableLine:
     def __init__(self, line):
-        self.title_md = line 
+        self.title_md = re_title.sub('', line).strip() + '\n\n'
 
         try:
-            self.name = re.findall(re_name, msg)
+            self.name = re.findall(re_name, line)
             self.name = re_title.sub('', self.name[0]).strip()
 
-            self.permalink = re_perm.findall(msg)
-            else: self.permalink= self.permalink[-2]
+            self.permalink = re_perm.findall(line)
+            self.permalink= self.permalink[0]
 
             self.sortby = self.name.lower()
         except Exception, e:
@@ -81,11 +82,15 @@ class TagBot:
         self.read_config()
 
     def read_config(self):
-        self.tags = [ x.lower() for x in self.get_accepted_tags() ]
-        self.volunteers = self.get_volunteers()
-        self.mods = self.get_mods()
-        self.codex_keeper = self.get_codex_keeper().replace('/u/','').replace('/','')
-        self.read_locked()
+        try:
+            self.tags = [ x.lower() for x in self.get_accepted_tags() ]
+            self.volunteers = self.get_volunteers()
+            self.mods = self.get_mods()
+            self.codex_keeper = self.get_codex_keeper().replace('/u/','').replace('/','')
+            self.read_locked()
+        except Exception, e:
+            log.exception("Unable to read config file! retrying in 30s")
+            sleep(30) 
 
     def get_codex_keeper(self):
         return re_user.findall(self.get_wiki_page('codexkeeper').content_md)[0]
@@ -116,7 +121,7 @@ class TagBot:
             comment.reply("This submission is no longer accepting tags")
             return
 
-        tmp = comment.body.replace(",", " ")
+        tmp = comment.body.replace(",", " ").replace('tags:', '')
         added = [ x.title() for x in tmp.split() if x.lower() in self.tags ]
         removed = [ x[1:].title() for x in tmp.split() if  x.startswith('-') and re.sub(r'^-','',x).lower() in self.tags ]
 
@@ -127,18 +132,19 @@ class TagBot:
             reply += 'Only the submitter or one of the mods can remove tags! sorry!\n\n'
 
         for tag in added + removed:
-            page = self.get_wiki_page(basetag).content_md
-            lines = [ SortableLine(line) for line in page.split('\n') if line 
-                                                                      and not line.startswith('#') 
-                                                                      and tag not in removed ]
+            page = self.get_wiki_page(tag).content_md
+            lines = [ SortableLine(line) for line in re.findall(re_list, page) if tag not in removed ]
             if tag not in removed:
-                lines += SortableLine('* [%s](%s) - by: [%s](/r/%s/wiki/%s)\n' % (comment.submission.title, 
-                                                                                  comment.submission.permalink, 
-                                                                                  comment.submission.author.name, 
-                                                                                  self.subreddit,
-                                                                                  comment.submission.author.name))
-
-            self.edit_wiki_page(tag, create_wiki_page(sort_titles(lines), tag))
+                lines += [ SortableLine('* [%s](%s) - by: [%s](/r/%s/wiki/%s)\n\n' % (comment.submission.title, 
+                                                                                      comment.submission.permalink, 
+                                                                                      comment.submission.author.name, 
+                                                                                      self.subreddit,
+                                                                                      comment.submission.author.name)) ]
+            log.debug("updating %s [removing?: %s] for %s" % (tag, tag in removed, comment.submission.title))
+            import ipdb
+            ipdb.set_trace()
+            md = create_wiki_page(sort_titles(lines), tag)
+            self.edit_wiki_page(tag, md)
 
         
         links = [ "[%s](/r/%s/wiki/tags/%s)" % (tag.title(), self.subreddit, tag.title()) for tag in added]
@@ -189,11 +195,11 @@ class TagBot:
         else:
             return True
 
-    def get_submission(self, permalink):
+    def get_submission(self, msg):
         self.sleep()
 
         try:
-            submission = self.account.get_submission(permalink)
+            submission = self.account.get_submission(msg.subject)
             subreddit = re_subreddit.findall(permalink)
 
             if subreddit and subreddit[0] == self.subreddit:  return submission
@@ -201,6 +207,8 @@ class TagBot:
             log.debug('got message with subject %s for bot configured on subreddit %s' % (permalink, self.subreddit))
         except Exception, e:
             log.exception('Not a submission?')
+            msg.reply("Unable to get submision %s from url: " % msg.subject)
+            msg.mark_as_read()
 
     def check_messages(self):
         self.sleep()
@@ -215,7 +223,7 @@ class TagBot:
                 msg.mark_as_read()
                 continue
 
-            submission = self.get_submission(msg.subject)
+            submission = self.get_submission(msg)
             log.debug('checking %s' % msg.subject)
             if not submission:
                 msg.mark_as_read()
@@ -256,7 +264,7 @@ class TagBot:
 
     def read_locked(self):
         locked = self.get_wiki_page('locked')
-        self.locked = re.findall(re_lock, locked.content_md)
+        self.locked = re.findall(re_locked, locked.content_md)
         
     def run(self):
         config_counter = 0

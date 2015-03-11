@@ -6,10 +6,6 @@ import logging as log
 from time import sleep
 from itertools import groupby
 
-class UnableToEditWikiError(Exception): pass
-class DummyAuthor:
-    def __init__(self, name):
-        self.name = name
 
 #TODO:
 
@@ -25,6 +21,16 @@ re_name = re.compile('\[(.*)\]')
 re_title = re.compile('\[(oc|pi|jenkinsverse|j-verse|jverse|misc|nsfw)\]', re.IGNORECASE)
 re_perm = re.compile('\((http[^)]*)\)')
 
+class UnableToEditWikiError(Exception): pass
+class DummyAuthor:
+    def __init__(self, name):
+        self.name = name
+
+    def __repr__(self):
+        return self.name
+
+    def __str__(self):
+        return self.name
 
 # expected format is: "* [title](link) - by: [author](link-to-authors-wiki)"
 class SortableLine:
@@ -38,7 +44,7 @@ class SortableLine:
             self.permalink = re_perm.findall(line)
             self.permalink= self.permalink[0]
 
-            self.sortby = self.name.lower()
+            self.sortby = self.permalink
         except Exception, e:
             log.exception('Incorrect format!')
             self.sortby = line
@@ -138,8 +144,8 @@ class TagBot:
 
         log.debug("found tags: %s" % ",".join(added + removed))
 
-        if not comment.author: tag_comment.author = DummyAuthor('deleted')
-        if not comment.submission.author: tag_comment.submission.author = DummyAuthor('deleted')
+        if not comment.author: comment.author = DummyAuthor('deleted')
+        if not comment.submission.author: comment.submission.author = DummyAuthor('deleted')
 
         if comment.author.name != comment.submission.author.name and comment.author.name not in self.mods:
             removed = []
@@ -245,7 +251,6 @@ class TagBot:
 
         for tag_comment in comments:
             try:
-
                 if tag_comment.created <= self.last_seen:
                     break
 
@@ -341,7 +346,7 @@ class TagBot:
             self.save_last_seen_comment()
 
             log.debug('sleeping...')
-            sleep(30)
+            sleep(15)
 
             if config_counter == 5:
                 self.read_config()

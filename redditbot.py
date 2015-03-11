@@ -123,7 +123,6 @@ class TagBot:
 
     def has_new_tags(self, comment):
         return comment.body.startswith('tags:') \
-               and comment.created > self.last_seen \
                and not comment.edited
 
     def update_wiki_page(self, comment):
@@ -138,6 +137,9 @@ class TagBot:
         removed = [ x[1:].title() for x in tmp.split() if  x.startswith('-') and re.sub(r'^-','',x).lower() in self.tags ]
 
         log.debug("found tags: %s" % ",".join(added + removed))
+
+        if not comment.author: tag_comment.author = DummyAuthor('deleted')
+        if not comment.submission.author: tag_comment.submission.author = DummyAuthor('deleted')
 
         if comment.author.name != comment.submission.author.name and comment.author.name not in self.mods:
             removed = []
@@ -201,7 +203,7 @@ class TagBot:
         except:
             log.exception('No such page?')
 
-    def save_last_seen(self):
+    def save_last_seen_comment(self):
         return self.account().edit_wiki_page(self.subreddit, 'tags/last_seen', self.last_seen)
 
     def get_last_seen(self):
@@ -236,34 +238,62 @@ class TagBot:
             msg.reply("I'm sorry i can't seem to get submission from url: %s\n\nYou will have to try again :(\n\n(Error: %s)" % msg.subject, e.message)
             msg.mark_as_read()
 
-    def check_messages(self):
-        messages = list(self.account().get_unread())
+    def check_comments(self):
+        log.debug('checking comments')
 
+        comments = self.get_comments()
+
+        for tag_comment in comments:
+            try:
+
+                if tag_comment.created <= self.last_seen:
+                    break
+
+                if not self.has_new_tags(tag_comment): continue
+
+                log.debug('Processing comment %s' % tag_comment.permalink)
+                if self.verify_user(tag_comment): 
+                    self.update_wiki_page(tag_comment)
+
+                if tag_comment.created > self.last_seen:
+                    self.last_seen = tag_comment.created
+            except Exception, e:
+                log.exception("Error processing a comment")
+                tag_comment.reply("There was an error processing your comment :( sorry. [%s]" % e.message)
+            
+
+    def check_messages(self):
         log.debug('checking messages')
 
+        messages = list(self.account().get_unread())
+
         for msg in messages:
-            if msg.subject == 'reload':
-                self.reload_config()
+            try:
+                if msg.subject == 'reload':
+                    self.reload_config()
 
-            submission = self.get_submission(msg)
-            log.debug('checking %s' % msg.subject)
-            if not submission:
+                submission = self.get_submission(msg)
+                log.debug('checking %s' % msg.subject)
+                if not submission:
+                    msg.mark_as_read()
+                    log.debug('discarding')
+                    continue
+
+                # set submission in order to treat PM and comment with the same functions
+                msg.submission = submission
+
+                if msg.body.startswith('tags:'):
+                    self.update_wiki_page(msg)
+                    msg.mark_as_read()
+
+                if msg.body.startswith('lock:'):
+                    self.lock_wiki_page(msg, submission)
+
+                log.debug("discarding")
                 msg.mark_as_read()
-                log.debug('discarding')
-                continue
-
-            # set submission in order to treat PM and comment with the same functions
-            msg.submission = submission
-
-            if msg.body.startswith('tags:'):
-                self.update_wiki_page(msg)
-                msg.mark_as_read()
-
-            if msg.body.startswith('lock:'):
-                self.lock_wiki_page(msg, submission)
-
-            log.debug("discarding")
-            msg.mark_as_read()
+            except Exception, e:
+                log.exception('Error processing message')
+                msg.reply("There was an error processing your message :( sorry. [%s]" % e.message)
 
     def reload_config(self, msg):
         if  msg.author.name not in self.mods:
@@ -305,26 +335,10 @@ class TagBot:
         while True:
             log.debug('waking up')
             self.last_seen = float(self.get_last_seen().content_md)
-            comments = self.get_comments()
 
-            try:
-                for tag_comment in  comments:
-
-                    if not tag_comment.author: tag_comment.author = DummyAuthor('deleted')
-                    if not tag_comment.submission.author: tag_comment.submission.author = DummyAuthor('deleted')
-
-                    if not self.has_new_tags(tag_comment): continue
-
-                    log.debug('Processing comment %s' % tag_comment.permalink)
-                    if self.verify_user(tag_comment): 
-                        self.update_wiki_page(tag_comment)
-
-                    if tag_comment.created > self.last_seen:
-                        self.last_seen = tag_comment.created
-
-                self.check_messages();
-            finally:
-                self.save_last_seen()
+            self.check_comments()
+            self.check_messages();
+            self.save_last_seen_comment()
 
             log.debug('sleeping...')
             sleep(30)
@@ -335,9 +349,10 @@ class TagBot:
 
 
 def main():
+    tagbot = TagBot('HFYBeta')
     while True:
         try:
-            TagBot('HFYBeta').run()
+            tagbot.run()
         except Exception, e:
             log.exception(e)
             sleep(140)

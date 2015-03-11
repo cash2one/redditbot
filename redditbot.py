@@ -7,7 +7,9 @@ from time import sleep
 from itertools import groupby
 
 class UnableToEditWikiError(Exception): pass
-
+class DummyAuthor:
+    def __init__(self, name):
+        self.name = name
 
 #TODO:
 
@@ -91,19 +93,21 @@ class TagBot:
         return self._account
 
     def read_config(self):
-        try:
-            self.tags = [ x.lower() for x in self.get_accepted_tags() ]
+        while True:
+            try:
+                self.tags = [ x.lower() for x in self.get_accepted_tags() ]
 
-            for t in self.tags:
-                if t not in self.wiki_modification_time: self.wiki_modification_time[t] = 0
+                for t in self.tags:
+                    if t not in self.wiki_modification_time: self.wiki_modification_time[t] = 0
 
-            self.volunteers = self.get_volunteers()
-            self.mods = self.get_mods()
-            self.codex_keeper = self.get_codex_keeper().replace('/u/','').replace('/','')
-            self.read_locked()
-        except Exception, e:
-            log.exception("Unable to read config file! retrying in 30s")
-            sleep(15) 
+                self.volunteers = self.get_volunteers()
+                self.mods = self.get_mods()
+                self.codex_keeper = self.get_codex_keeper().replace('/u/','').replace('/','')
+                self.read_locked()
+                return
+            except Exception, e:
+                log.exception("Unable to read config file! retrying in 30s")
+                sleep(15) 
 
     def get_codex_keeper(self):
         return re_user.findall(self.get_wiki_page('codexkeeper').content_md)[0]
@@ -189,7 +193,7 @@ class TagBot:
 
 
     def get_comments(self):
-        return self.account().get_comments(self.subreddit, limit=50)
+        return self.account().get_comments(self.subreddit, limit=5000)
 
     def get_wiki_page(self, tag):
         try:
@@ -229,7 +233,7 @@ class TagBot:
             msg.reply("I'can only work on %s this is a submission to %s" % (self.subreddit, subreddit))
         except Exception, e:
             log.exception('Not a submission?')
-            msg.reply("I'm sorry i can't seem to get submision from url: %s\n\nYou will have to try again :(\n\n(Error: %s)" % msg.subject, e.message)
+            msg.reply("I'm sorry i can't seem to get submission from url: %s\n\nYou will have to try again :(\n\n(Error: %s)" % msg.subject, e.message)
             msg.mark_as_read()
 
     def check_messages(self):
@@ -239,14 +243,7 @@ class TagBot:
 
         for msg in messages:
             if msg.subject == 'reload':
-                if  msg.author.name not in self.mods:
-                    msg.mark_as_read()
-                    msg.reply("Nice try, but you're not a mod ;)")
-
-                self.read_config()
-                msg.reply("Settings have been reloaded")
-                msg.mark_as_read()
-                continue
+                self.reload_config()
 
             submission = self.get_submission(msg)
             log.debug('checking %s' % msg.subject)
@@ -255,7 +252,7 @@ class TagBot:
                 log.debug('discarding')
                 continue
 
-            log.debug('message subject %s' % msg.subject)
+            # set submission in order to treat PM and comment with the same functions
             msg.submission = submission
 
             if msg.body.startswith('tags:'):
@@ -263,29 +260,40 @@ class TagBot:
                 msg.mark_as_read()
 
             if msg.body.startswith('lock:'):
-                if msg.author.name != submission.author.name and msg.author.name not in self.mods:
-                    msg.mark_as_read()
-                    msg.reply('Only author or mod can lock a thread')
-
-                else:
-                    content = ''
-                    locked = self.get_wiki_page('locked')
-                    if locked: content = locked.content_md
-
-                    content += '* %s' % submission.url
-                    content += '\n\n'
-
-                    content = content.split('* ')
-                    content = ''.join(["* %s" % x for x in sorted(set(content)) if x])
-                    
-                    self.update_wiki_page(msg)
-                    self.edit_wiki_page('locked', content)
-                    msg.mark_as_read()
-                    msg.reply("The submission tags can no longer be changed by volunteers")
-
+                self.lock_wiki_page(msg, submission)
 
             log.debug("discarding")
             msg.mark_as_read()
+
+    def reload_config(self, msg):
+        if  msg.author.name not in self.mods:
+            msg.mark_as_read()
+            msg.reply("Nice try, but you're not a mod ;)")
+
+        self.read_config()
+        msg.reply("Settings have been reloaded")
+        msg.mark_as_read()
+
+    def lock_wiki_page(self, msg, submission):
+        if msg.author.name != submission.author.name and msg.author.name not in self.mods:
+            msg.mark_as_read()
+            msg.reply('Only author or mod can lock a thread')
+
+        else:
+            content = ''
+            locked = self.get_wiki_page('locked')
+            if locked: content = locked.content_md
+
+            content += '* %s' % submission.url
+            content += '\n\n'
+
+            content = content.split('* ')
+            content = ''.join(["* %s" % x for x in sorted(set(content)) if x])
+            
+            self.update_wiki_page(msg)
+            self.edit_wiki_page('locked', content)
+            msg.mark_as_read()
+            msg.reply("The submission tags can no longer be tagged")
 
     def read_locked(self):
         locked = self.get_wiki_page('locked')
@@ -300,7 +308,12 @@ class TagBot:
             comments = self.get_comments()
 
             try:
-                for tag_comment in  [ x for x in comments if self.has_new_tags(x) ]:
+                for tag_comment in  comments:
+                    if not tag_comment.author: tag_comment.author = DummyAuthor('deleted')
+                    if not tag_comment.submission.author: tag_comment.submission.author = DummyAuthor('deleted')
+
+                    if not self.has_new_tags(tag_comment): continue
+
                     log.debug('Processing comment %s' % tag_comment.permalink)
                     if self.verify_user(tag_comment): 
                         self.update_wiki_page(tag_comment)

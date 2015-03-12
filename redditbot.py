@@ -241,7 +241,7 @@ class TagBot:
 
             if subreddit and subreddit[0] == self.subreddit:  return submission
 
-            log.debug('got message with subject %s for bot configured on subreddit %s' % (permalink, self.subreddit))
+            log.debug('got message with subject %s for bot configured on subreddit %s' % (msg.permalink, self.subreddit))
             msg.reply("I'can only work on %s this is a submission to %s" % (self.subreddit, subreddit))
         except Exception, e:
             log.exception('Not a submission?')

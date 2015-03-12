@@ -239,7 +239,7 @@ class TagBot:
             submission = self.account().get_submission(msg.subject)
             subreddit = re_subreddit.findall(submission.permalink)
 
-            if subreddit and subreddit[0] == self.subreddit:  return submission
+            if subreddit and subreddit[0].lower() == self.subreddit.lower():  return submission
 
             log.debug('got message with subject %s for bot configured on subreddit %s' % (msg.subject, self.subreddit))
             msg.reply("I'can only work on %s this is a submission to %s" % (self.subreddit, subreddit))

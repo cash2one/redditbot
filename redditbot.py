@@ -153,13 +153,16 @@ class TagBot:
             page = self.get_wiki_page(tag)
             self.wiki_modification_time[tag] = page.revision_date
 
-            lines = [ SortableLine(line) for line in re.findall(re_list, page.content_md) if tag not in removed ]
+            lines = [ SortableLine(line) for line in re.findall(re_list, page.content_md) ]
             if tag not in removed:
                 lines += [ SortableLine('* [%s](%s) - by: [%s](/r/%s/wiki/%s)\n\n' % (comment.submission.title, 
                                                                                       comment.submission.permalink, 
                                                                                       comment.submission.author.name, 
                                                                                       self.subreddit,
                                                                                       comment.submission.author.name)) ]
+            else:
+                lines = [ x for x in lines if x.permalink != comment.submission.permalink ]
+
             log.debug("updating %s [removing?: %s] for %s" % (tag, tag in removed, comment.submission.title))
             md = format_wiki_page(sort_titles(lines), tag)
 
@@ -221,6 +224,7 @@ class TagBot:
 
     def verify_user(self, comment):
         if not comment.author: comment.author = DummyAuthor('deleted')
+        if not comment.submission.author: comment.submission.author = DummyAuthor('deleted')
 
         if comment.author.name not in self.volunteers + [comment.submission.author.name] + self.mods:
             log.debug("Unauthorized tagging attempt")

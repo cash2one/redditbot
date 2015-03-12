@@ -245,7 +245,7 @@ class TagBot:
             msg.reply("I'can only work on %s this is a submission to %s" % (self.subreddit, subreddit))
         except Exception, e:
             log.exception('Not a submission?')
-            msg.reply("I'm sorry i can't seem to get submission from url: %s\n\nYou will have to try again :(\n\n(Error: %s)" % msg.subject, e.message)
+            msg.reply("I'm sorry i can't seem to get submission from url: %s\n\nYou will have to try again :(\n\n(Error: %s)" % (msg.subject, e.message))
             msg.mark_as_read()
 
     def check_comments(self):
@@ -281,7 +281,7 @@ class TagBot:
         for msg in messages:
             try:
                 if msg.subject == 'reload':
-                    self.reload_config()
+                    self.reload_config(msg)
 
                 submission = self.get_submission(msg)
                 if not submission: continue # unable to get submision from subject

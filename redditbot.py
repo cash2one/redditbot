@@ -44,24 +44,22 @@ class SortableLine:
             self.permalink = re_perm.findall(line)
             self.permalink= self.permalink[0]
 
-            self.sortby = self.title_md
+            self.sortby = self.name
+            self.groupby = self.permalink
         except Exception, e:
             log.exception('Incorrect format!')
             self.sortby = line
             self.name = line
 
+    def __eq__(self, other):
+        return self.permalink == other.permalink
+
+    def __hash__(self):
+        return hash(self.permalink)
+
 
 def sort_titles(titles):
-    keys = []
-    groups = []
-
-    for k, g in groupby(titles, lambda x: x.sortby):
-        keys.append(k)
-        groups.append(list(g))
-
-    # first element of every group should hold correctly capitalized title
-    
-    return [x[0] for x in sorted(groups, key=lambda x: x[0].sortby)]
+    return [x for x in sorted(set(titles), key=lambda x: x.sortby)]
 
 def format_wiki_page(lines, tag):
     anchor = None
@@ -222,6 +220,8 @@ class TagBot:
             log.exception('Captcha exception?')
 
     def verify_user(self, comment):
+        if not comment.author: comment.author = DummyAuthor('deleted')
+
         if comment.author.name not in self.volunteers + [comment.submission.author.name] + self.mods:
             log.debug("Unauthorized tagging attempt")
             comment.reply("You need to contact /u/%s  to be able to volunteer tags!" % self.codex_keeper)
@@ -259,12 +259,13 @@ class TagBot:
                 log.debug('Processing comment %s' % tag_comment.permalink)
                 if self.verify_user(tag_comment): 
                     self.update_wiki_page(tag_comment)
-
-                if tag_comment.created > self.last_seen:
-                    self.new_last_seen = tag_comment.created
             except Exception, e:
                 log.exception("Error processing a comment")
                 tag_comment.reply("There was an error processing your comment :( sorry. [%s]" % e.message)
+            finally:
+                if tag_comment.created > self.new_last_seen:
+                    self.new_last_seen = tag_comment.created
+
 	self.last_seen = self.new_last_seen
             
 
@@ -279,27 +280,24 @@ class TagBot:
                     self.reload_config()
 
                 submission = self.get_submission(msg)
-                log.debug('checking %s' % msg.subject)
-                if not submission:
-                    msg.mark_as_read()
-                    log.debug('discarding')
-                    continue
+                if not submission: continue # unable to get submision from subject
 
                 # set submission in order to treat PM and comment with the same functions
                 msg.submission = submission
 
+                log.debug('Processing message %s' % msg.subject)
                 if msg.body.startswith('tags:'):
                     self.update_wiki_page(msg)
-                    msg.mark_as_read()
 
                 if msg.body.startswith('lock:'):
                     self.lock_wiki_page(msg, submission)
 
-                log.debug("discarding")
-                msg.mark_as_read()
             except Exception, e:
                 log.exception('Error processing message')
                 msg.reply("There was an error processing your message :( sorry. [%s]" % e.message)
+            finally:
+                log.debug("marking as read")
+                msg.mark_as_read()
 
     def reload_config(self, msg):
         if  msg.author.name not in self.mods:
@@ -341,6 +339,7 @@ class TagBot:
         while True:
             log.debug('waking up')
             self.last_seen = float(self.get_last_seen().content_md)
+            self.new_last_seen = self.last_seen
 
             self.check_comments()
             self.check_messages();

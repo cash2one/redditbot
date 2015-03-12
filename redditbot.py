@@ -358,7 +358,7 @@ class TagBot:
 
 
 def main():
-    tagbot = TagBot('HFYBeta')
+    tagbot = TagBot(os.environ['REDDIT_SUBR'])
     while True:
         try:
             tagbot.run()

@@ -177,7 +177,7 @@ class TagBot:
 
         if removed: reply += "Removed tags: %s" % ", ".join(removed)
 
-        reply += '\n\nAccepted list of tags can be found here: /r/HFYBeta/wiki/tags/accepted'
+        reply += '\n\nAccepted list of tags can be found here: /r/%s/wiki/tags/accepted' % self.subreddit
         comment.reply(reply)
 
 

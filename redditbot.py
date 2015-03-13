@@ -19,6 +19,7 @@ re_locked = re.compile('\* ([^\s]*)')
 re_list = re.compile('\* [^\n]*')
 re_name = re.compile('\[(.*)\]')
 re_title = re.compile('\[(oc|pi|jenkinsverse|j-verse|jverse|misc|nsfw)\]', re.IGNORECASE)
+re_command = re.compile('\[(tags|lock)\]', re.IGNORECASE)
 re_perm = re.compile('\((http[^)]*)\)')
 
 class UnableToEditWikiError(Exception): pass
@@ -126,8 +127,7 @@ class TagBot:
         return re_name.findall(self.get_wiki_page('accepted').content_md)
 
     def has_new_tags(self, comment):
-        return comment.body.startswith('tags:') \
-               and not comment.edited
+        return comment.body.lower().startswith('tags:') and not comment.edited
 
     def update_wiki_page(self, comment):
         reply = ''
@@ -293,7 +293,7 @@ class TagBot:
                 if msg.body.startswith('tags:'):
                     self.update_wiki_page(msg)
 
-                if msg.body.startswith('lock:'):
+                if msg.body.lower().startswith('lock:'):
                     self.lock_wiki_page(msg, submission)
 
             except Exception, e:

@@ -34,6 +34,17 @@
 
     function send_pm() {
         var checked = $('ul.tag-list :checked').map(function() { return $(this).val() });
+
+        $.post('http://www.reddit.com/api/comment', 
+               {
+                    api_type: 'json',
+                    text: 'test',
+                    thing_id: 't3_2yxaji'
+               }, 
+               function(response) {
+                    console.log(response);
+               }, 
+               'json');
     };
 
     function leave_comment() {
@@ -90,7 +101,6 @@
         });
     };
 
-
     ns.init = function() {
         add_global_style('div.tag-list { padding: 10px; background: white; -moz-border-radius: 10px; -webkit-border-radius: 10px;border-radius: 10px;}');
         add_global_style('div.tag-list input[type="button"] { margin: 8px;}');
@@ -103,5 +113,7 @@
 
 
 $(document).ready(function() {
+    if(!reddit.logged) return;
+
     taglib.init();
 });

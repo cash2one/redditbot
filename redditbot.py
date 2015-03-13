@@ -177,7 +177,7 @@ class TagBot:
 
         if removed: reply += "Removed tags: %s" % ", ".join(removed)
 
-        reply += '\n\nAccepted list of tags can be found here: /r/HFYBeta/wiki/tags/accepted'
+        reply += '\n\nAccepted list of tags can be found here: /r/%s/wiki/tags/accepted' % self.subreddit
         comment.reply(reply)
 
 
@@ -239,13 +239,13 @@ class TagBot:
             submission = self.account().get_submission(msg.subject)
             subreddit = re_subreddit.findall(submission.permalink)
 
-            if subreddit and subreddit[0] == self.subreddit:  return submission
+            if subreddit and subreddit[0].lower() == self.subreddit.lower():  return submission
 
-            log.debug('got message with subject %s for bot configured on subreddit %s' % (permalink, self.subreddit))
+            log.debug('got message with subject %s for bot configured on subreddit %s' % (msg.subject, self.subreddit))
             msg.reply("I'can only work on %s this is a submission to %s" % (self.subreddit, subreddit))
         except Exception, e:
             log.exception('Not a submission?')
-            msg.reply("I'm sorry i can't seem to get submission from url: %s\n\nYou will have to try again :(\n\n(Error: %s)" % msg.subject, e.message)
+            msg.reply("I'm sorry i can't seem to get submission from url: %s\n\nYou will have to try again :(\n\n(Error: %s)" % (msg.subject, e.message))
             msg.mark_as_read()
 
     def check_comments(self):
@@ -281,7 +281,7 @@ class TagBot:
         for msg in messages:
             try:
                 if msg.subject == 'reload':
-                    self.reload_config()
+                    self.reload_config(msg)
 
                 submission = self.get_submission(msg)
                 if not submission: continue # unable to get submision from subject

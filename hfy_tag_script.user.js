@@ -47,6 +47,7 @@
                function(response) {
                     console.log(response);
 					$('#tag-popup').bPopup().close();
+				
                }, 
                'json');
 
@@ -65,6 +66,7 @@
                function(response) {
                     console.log(response);
 					$('#tag-popup').bPopup().close();
+					location.reload();
                }, 
                'json');
 

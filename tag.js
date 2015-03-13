@@ -4,7 +4,7 @@
 // @version      0.1
 // @description  enter something useful
 // @author       You
-// @include        http://www.reddit.com/r/hfybeta*
+// @include        http://www.reddit.com/r/hfy*
 // @grant        none
 // ==/UserScript==
 //

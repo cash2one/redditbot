@@ -292,7 +292,7 @@ class TagBot:
                 msg.submission = submission
 
                 log.debug('Processing message %s' % msg.subject)
-                if msg.body.lower().startswith('test:'):
+                if msg.body.lower().startswith('tags:'):
                     self.update_wiki_page(msg)
 
                 if msg.body.lower().startswith('lock:'):

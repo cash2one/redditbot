@@ -21,6 +21,7 @@
 
 ;(function (ns, undefined) {
     var tags = [];
+	var modhash = "";
 
     function add_global_style(css) {
         var head, style;
@@ -33,31 +34,49 @@
     }
 
     function send_pm() {
-        var checked = $('ul.tag-list :checked').map(function() { return $(this).val() });
+        var checked = $('ul.tag-list :checked').map(function() { return $(this).val() }).toArray();
+
+        $.post('http://www.reddit.com/api/compose', 
+               {
+                    api_type: 'json',
+                    subject: document.URL,
+					uh : modhash,
+					text: "tags: " + checked.join(' '),
+					to: 'hfy_tag_bot',
+               }, 
+               function(response) {
+                    console.log(response);
+					$('#tag-popup').bPopup().close();
+               }, 
+               'json');
+
+    };
+
+    function leave_comment() {
+        var checked = $('ul.tag-list :checked').map(function() { return $(this).val() }).toArray();
 
         $.post('http://www.reddit.com/api/comment', 
                {
                     api_type: 'json',
-                    text: 'test',
-                    thing_id: 't3_2yxaji'
+                    text: "tags: " + checked.join(' '),
+					uh : modhash,
+                    thing_id: $('.self').data().fullname
                }, 
                function(response) {
                     console.log(response);
+					$('#tag-popup').bPopup().close();
                }, 
                'json');
-    };
 
-    function leave_comment() {
-        var checked = $('ul.tag-list :checked').map(function() { return $(this).val() });
     };
 
 
     function show_popup() {
         var ul = $('<ul class="tag-list">');
         for(var i=0;i<tags.length;i++) {
-            ul.append($('<li><input type="checkbox" value="'+tags[i].name+'"><span class="tag">'+tags[i].name+'</span></input><span>'+tags[i].desc+'</span></li>'));
+            ul.append($('<li><input class="tagbox" type="checkbox" value="'+tags[i].name+'"><span class="tag">'+tags[i].name+'</span></input><span>'+tags[i].desc+'</span></li>'));
         }
-        var div = $('<div class="tag-list">')
+        var div = $('<div class="tag-list" id="tag-popup">')
 
         div.append(ul);
         
@@ -79,6 +98,10 @@
     }
 
     function get_accepted_tags() {
+		if (tags.length > 0) {
+			show_popup();
+			return;
+		}
         $.getJSON('http://www.reddit.com/r/hfy/wiki/tags/accepted.json', function(data) { 
             console.log(data); 
             var tmp = data.data.content_md.split('\n');
@@ -92,21 +115,30 @@
                 tags.push({name: s.substring(b+1,e), desc: s.substring(c+1)});
 
             }
-            var a = $('<li style="cursor: pointer; cursor: hand"><a>tag</a></li>');
-            
-            $('#siteTable ul.flat-list').append(a);
-            a.click(function() {
-                show_popup();
-            });
+			show_popup();
         });
     };
+
 
     ns.init = function() {
         add_global_style('div.tag-list { padding: 10px; background: white; -moz-border-radius: 10px; -webkit-border-radius: 10px;border-radius: 10px;}');
         add_global_style('div.tag-list input[type="button"] { margin: 8px;}');
-        //add_global_style('div.tag-list input[type="checkbox"] { color: #fff;}');
         add_global_style('span.tag { color: #c53716; font-size: 14px; font-weight: bold}');
-        get_accepted_tags();
+
+
+	    var a = $('<li style="cursor: pointer; cursor: hand"><a>tag</a></li>');
+	    $('#siteTable ul.flat-list').append(a);
+	    a.click(function() {
+			get_accepted_tags();
+	    });
+
+        $.getJSON('http://www.reddit.com/api/me.json', function(data) { 
+				console.log(data);
+				modhash = data.data.modhash;
+            }
+        );
+
+
     };
 
 })(window.taglib = window.taglib || {});
@@ -117,3 +149,6 @@ $(document).ready(function() {
 
     taglib.init();
 });
+
+// https://www.uploady.com/download/XPAzjUaxeuZ/Dl~awcKgqzzj5vj1
+// https://www.uploady.com/download/DKNkpd9Mav8/8bekhYjGjhH6461r

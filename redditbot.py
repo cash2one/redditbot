@@ -136,7 +136,8 @@ class TagBot:
             comment.reply("This submission is no longer accepting tags")
             return
 
-        tmp = comment.body.replace(",", " ").replace('tags:', '')
+        tmp = comment.body.replace(",", " ")
+        tmp = re_command.sub('', tmp)
         added = [ x.title() for x in tmp.split() if x.lower() in self.tags ]
         removed = [ x[1:].title() for x in tmp.split() if  x.startswith('-') and re.sub(r'^-','',x).lower() in self.tags ]
 

@@ -33,17 +33,18 @@
     }
 
     function send_pm() {
-        var checked = $('ul.tag-list :checked');
+        var checked = $('ul.tag-list :checked').map(function() { return $(this).val() });
     };
 
     function leave_comment() {
+        var checked = $('ul.tag-list :checked').map(function() { return $(this).val() });
     };
 
 
     function show_popup() {
         var ul = $('<ul class="tag-list">');
         for(var i=0;i<tags.length;i++) {
-            ul.append($('<li><input type="checkbox" value="'+tags[i].name+'">'+tags[i].name+'</input><span>'+tags[i].desc+'</span></li>'));
+            ul.append($('<li><input type="checkbox" value="'+tags[i].name+'"><span class="tag">'+tags[i].name+'</span></input><span>'+tags[i].desc+'</span></li>'));
         }
         var div = $('<div class="tag-list">')
 
@@ -55,7 +56,7 @@
         left = 200;
 
         var pm = $('<input type="button" value="Send PM"></input>');
-        pm.click(send_mp);
+        pm.click(send_pm);
 
         var msg = $('<input type="button" value="Leave comment"></input>');
         msg.click(leave_comment);
@@ -93,6 +94,8 @@
     ns.init = function() {
         add_global_style('div.tag-list { padding: 10px; background: white; -moz-border-radius: 10px; -webkit-border-radius: 10px;border-radius: 10px;}');
         add_global_style('div.tag-list input[type="button"] { margin: 8px;}');
+        //add_global_style('div.tag-list input[type="checkbox"] { color: #fff;}');
+        add_global_style('span.tag { color: #c53716; font-size: 14px; font-weight: bold}');
         get_accepted_tags();
     };
 

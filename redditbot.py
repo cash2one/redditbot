@@ -22,6 +22,7 @@ re_title = re.compile('\[(oc|pi|jenkinsverse|j-verse|jverse|misc|nsfw)\]', re.IG
 re_command = re.compile('\[(tags|lock)\]', re.IGNORECASE)
 re_perm = re.compile('\((http[^)]*)\)')
 
+
 class UnableToEditWikiError(Exception): pass
 class DummyAuthor:
     def __init__(self, name):
@@ -291,7 +292,7 @@ class TagBot:
                 msg.submission = submission
 
                 log.debug('Processing message %s' % msg.subject)
-                if msg.body.startswith('tags:'):
+                if msg.body.lower().startswith('test:'):
                     self.update_wiki_page(msg)
 
                 if msg.body.lower().startswith('lock:'):

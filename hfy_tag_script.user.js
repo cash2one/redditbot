@@ -95,8 +95,8 @@
 
         div.append(pm);
         div.append(msg);
-
-        div.bPopup({follow: [false, false], transition: 'slideDown', position: [left, top]});
+        $('body').append(div);
+        $('#tag-popup').bPopup({follow: [false, false], transition: 'slideDown'});
     }
 
     function get_accepted_tags() {

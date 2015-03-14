@@ -115,6 +115,11 @@
                 var c = s.lastIndexOf(')');
 
                 tags.push({name: s.substring(b+1,e), desc: s.substring(c+1)});
+                tags.sort(function(a, b) {
+                    if(a.name > b.name) return 1;
+                    if(a.name == b.name) return 0;
+                    if(a.name < b.name) return -1;
+                });
 
             }
 			show_popup();

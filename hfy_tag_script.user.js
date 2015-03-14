@@ -90,8 +90,12 @@
         var pm = $('<input type="button" value="Send PM"></input>');
         pm.click(send_pm);
 
-        var msg = $('<input type="button" value="Leave comment"></input>');
-        msg.click(leave_comment);
+        var postdate = Date.parse($('time').attr('datetime'));
+        var now = Date.now();
+        if(now-postdate < 15768000000) { // six months
+            var msg = $('<input type="button" value="Leave comment"></input>');
+            msg.click(leave_comment);
+        }
 
         div.append(pm);
         div.append(msg);

@@ -22,6 +22,7 @@
 ;(function (ns, undefined) {
     var tags = [];
 	var modhash = "";
+    var bot_name = "hfy_tag_bot";
 
     function add_global_style(css) {
         var head, style;
@@ -35,14 +36,17 @@
 
     function send_pm() {
         var checked = $('ul.tag-list :checked').map(function() { return $(this).val() }).toArray();
+        var locking = $('#lock_checkbox').prop('checked');
+
+        var command = locking ? "lock: " : "tags: ";
 
         $.post('http://www.reddit.com/api/compose', 
                {
                     api_type: 'json',
                     subject: document.URL,
 					uh : modhash,
-					text: "tags: " + checked.join(' '),
-					to: 'hfy_tag_bot',
+					text: command + checked.join(' '),
+					to: bot_name,
                }, 
                function(response) {
                     console.log(response);
@@ -82,10 +86,11 @@
 
         div.append(ul);
         
-        var top = Math.max(0, (($(window).height() - $(div).outerHeight()) / 2) + $(window).scrollTop());
-
-        top -= 250;
-        left = 200;
+        var lock = $('<input type="checkbox" id="lock_checkbox">lock?</input>');
+        if(reddit.logged == $('.entry a.author')[0].text) {
+            div.append('<div>Note: if you check lock? no further attemts to tag will be picked up by bot</div>');
+            div.append(lock);
+        }
 
         var pm = $('<input type="button" value="Send PM"></input>');
         pm.click(send_pm);

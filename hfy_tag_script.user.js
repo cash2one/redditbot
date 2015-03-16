@@ -154,6 +154,17 @@
             }
         );
 
+        $.getJSON('http://www.reddit.com/r/hfybeta/wiki/tags/all.json', function(data) { 
+            html = data.data.content_html;
+                        
+            var e = document.createElement('div');
+            e.innerHTML = html.replace('&lt;!-- SC_OFF --&gt;','');
+
+            var ret = $(e.childNodes[0].nodeValue);
+            tags = $(ret).find('a[href="'+document.location+'"]').parent().find('a').map(function(x) {return $(this).text()}).toArray();
+            tags = tags.filter(function(x) { if (x.indexOf('#')) return x; })
+        });
+
 
     };
 

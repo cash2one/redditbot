@@ -19,7 +19,7 @@ re_subreddit = re.compile('/r/([^/]*)')
 re_locked = re.compile('\* ([^\s]*)')
 re_list = re.compile('\* [^\n]*')
 re_name = re.compile('\[(.*)\]')
-re_title = re.compile('\[(oc|pi|jenkinsverse|j-verse|jverse|misc|nsfw)\]', re.IGNORECASE)
+re_title = re.compile('(\[|\()(oc|pi|jenkinsverse|j-verse|jverse|misc|nsfw)(\]|\))', re.IGNORECASE)
 re_command = re.compile('\[(tags|lock)\]', re.IGNORECASE)
 re_perm = re.compile('\((http[^)]*)\)')
 
@@ -159,9 +159,6 @@ class TagBot:
             page = self.get_wiki_page(tag)
             self.wiki_modification_time[tag] = page.revision_date
             
-            import ipdb
-            ipdb.set_trace()
-
             lines = [ SortableLine(line) for line in re.findall(re_list, page.content_md) ]
             if tag not in removed:
                 lines += [ SortableLine('* [%s](%s) - by: [%s](/r/%s/wiki/%s)\n\n' % (comment.submission.title, 

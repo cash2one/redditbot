@@ -3,6 +3,7 @@ import time
 import praw
 import re
 import logging as log
+from HTMLParser import HTMLParser
 from time import sleep
 from itertools import groupby
 
@@ -61,6 +62,7 @@ class SortableLine:
 
 
 def sort_titles(titles):
+    hp = HTMLParser()
     return [x for x in sorted(set(titles), key=lambda x: x.sortby)]
 
 def format_wiki_page(lines, tag):
@@ -70,6 +72,8 @@ def format_wiki_page(lines, tag):
     ret.append('#%s' % tag)
     ret.append('\n\n')
 
+
+    hp = HTMLParser()
     # add anchors based on first letter of the name
     for line in lines:
         if line.name[0].lower() != anchor:
@@ -77,7 +81,7 @@ def format_wiki_page(lines, tag):
             ret.append('\n\n')
             ret.append('##%s' % anchor.upper())
             ret.append('\n\n')
-        ret.append(line.title_md)
+        ret.append(hp.unescape(line.title_md))
 
     return "".join(ret)
 
@@ -154,6 +158,9 @@ class TagBot:
         for tag in added + removed:
             page = self.get_wiki_page(tag)
             self.wiki_modification_time[tag] = page.revision_date
+            
+            import ipdb
+            ipdb.set_trace()
 
             lines = [ SortableLine(line) for line in re.findall(re_list, page.content_md) ]
             if tag not in removed:

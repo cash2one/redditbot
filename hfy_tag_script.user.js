@@ -162,7 +162,9 @@
 
             var ret = $(e.childNodes[0].nodeValue);
             tags = $(ret).find('a[href="'+document.location+'"]').parent().find('a').map(function(x) {return $(this).text()}).toArray();
-            tags = tags.filter(function(x) { if (x.indexOf('#')) return x; })
+            tags = tags.filter(function(x) { if (x.indexOf('#')===0) return x; })
+
+            $('#siteTable .entry .tagline').after('<p class="tagline">'+tags.join(' ')+'</p>');
         });
 
 

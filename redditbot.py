@@ -401,7 +401,7 @@ class TagBot:
 
             if config_counter == 5:
                 self.read_config()
-                conifg_counter = 0
+                config_counter = 0
 
             if all_counter = 10:
                 self.update_global_tags()

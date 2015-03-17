@@ -4,7 +4,7 @@
 // @version      0.1
 // @description  enter something useful
 // @author       You
-// @include        http://www.reddit.com/r/hfybeta/comments/*
+// @include        http://www.reddit.com/r/hfy/comments/*
 // @grant        none
 // ==/UserScript==
 //
@@ -47,13 +47,15 @@
 					uh : modhash,
 					text: command + checked.join(' '),
 					to: bot_name,
-               }, 
-               function(response) {
+               })
+               .done(function(response) {
                     console.log(response);
-					$('#tag-popup').bPopup().close();
-				
-               }, 
-               'json');
+                    $('#tag-popup').bPopup().close();
+                    location.reload();
+               }) 
+              .fail(function() {
+                  alert('Unexpected error occured! :..(');
+              });
 
     };
 
@@ -66,13 +68,15 @@
                     text: "tags: " + checked.join(' '),
 					uh : modhash,
                     thing_id: $('.self').data().fullname
-               }, 
-               function(response) {
+               })
+               .done(function(response) {
                     console.log(response);
 					$('#tag-popup').bPopup().close();
 					location.reload();
-               }, 
-               'json');
+               })
+               .fail(function(response) {
+                   alert("Unexpected error occured! :..(");
+               }); 
 
     };
 
@@ -154,18 +158,19 @@
             }
         );
 
-        $.getJSON('http://www.reddit.com/r/hfybeta/wiki/tags/all.json', function(data) { 
-            html = data.data.content_html;
-                        
-            var e = document.createElement('div');
-            e.innerHTML = html.replace('&lt;!-- SC_OFF --&gt;','');
+        $.get('http://www.reddit.com/r/hfy/wiki/tags/all')
+            .done(function(data) { 
+                var div = $('<div>');
+                div.html(data);
 
-            var ret = $(e.childNodes[0].nodeValue);
-            tags = $(ret).find('a[href="'+document.location+'"]').parent().find('a').map(function(x) {return $(this).text()}).toArray();
-            tags = tags.filter(function(x) { if (x.indexOf('#')===0) return x; })
+                tags = $(div).find('a[href="'+document.location+'"]').parent().find('a').map(function(x) {return $(this).text()}).toArray();
+                tags = tags.filter(function(x) { if (x.indexOf('#')===0) return true; });
+                tags = tags.map(function(x) { return '#<a href="/r/hfy/wiki/tags/'+x.substring(1)+'">'+x.substring(1)+'</a>'; });
+                
 
-            $('#siteTable .entry .tagline').after('<p class="tagline">'+tags.join(' ')+'</p>');
-        });
+                $('#siteTable .entry .tagline').after('<p class="tagline">'+tags.join(' ')+'</p>');
+
+            });
     };
 
 })(window.taglib = window.taglib || {});

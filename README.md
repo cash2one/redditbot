@@ -1,4 +1,4 @@
-This bot has been created to allow some fashion of tagging submitted stories.
+This bot [and it's helper plugin](https://github.com/tag-bot/redditbot/wiki/javascript_plugin) has been created to allow some fashion of tagging submitted stories.
 
 It works by reading all comments on a defined subreddit looking for specifically formatted ones. If a comment starts with the word "tags:" it assumes that the rest of the words are tags.
 

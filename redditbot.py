@@ -176,11 +176,11 @@ class TagBot:
             
             lines = [ SortableLine(line) for line in re.findall(re_list, page.content_md) ]
             if tag not in removed:
-                lines += [ SortableLine('* [%s](%s) - by: [%s](/r/%s/wiki/%s)\n\n' % (comment.submission.title, 
-                                                                                      comment.submission.permalink, 
-                                                                                      comment.submission.author.name, 
-                                                                                      self.subreddit,
-                                                                                      comment.submission.author.name)) ]
+                lines += [ SortableLine('* [%s](%s) - by: [%s](/r/%s/wiki/authors/%s)\n\n' % (comment.submission.title, 
+                                                                                              comment.submission.permalink, 
+                                                                                              comment.submission.author.name, 
+                                                                                              self.subreddit,
+                                                                                              comment.submission.author.name)) ]
             else:
                 lines = [ x for x in lines if x.permalink != comment.submission.permalink ]
 

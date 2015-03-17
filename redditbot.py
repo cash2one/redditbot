@@ -403,7 +403,7 @@ class TagBot:
                 self.read_config()
                 config_counter = 0
 
-            if all_counter = 10:
+            if all_counter == 10:
                 self.update_global_tags()
                 all_counter = 0
 

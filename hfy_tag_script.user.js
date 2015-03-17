@@ -4,7 +4,7 @@
 // @version      0.1
 // @description  enter something useful
 // @author       You
-// @include        http://www.reddit.com/r/hfy/comments/*
+// @include        http://www.reddit.com/r/hfy*/comments/*
 // @grant        none
 // ==/UserScript==
 //
@@ -22,7 +22,7 @@
 ;(function (ns, undefined) {
     var tags = [];
 	var modhash = "";
-    var bot_name = "hfy_tag_bot";
+    var bot_name = reddit.post_site + "_tag_bot";
 
     function add_global_style(css) {
         var head, style;
@@ -47,13 +47,15 @@
 					uh : modhash,
 					text: command + checked.join(' '),
 					to: bot_name,
-               }, 
-               function(response) {
+               })
+               .done(function(response) {
                     console.log(response);
-					$('#tag-popup').bPopup().close();
-				
-               }, 
-               'json');
+                    $('#tag-popup').bPopup().close();
+                    location.reload();
+               }) 
+              .fail(function() {
+                  alert('Unexpected error occured! :..(');
+              });
 
     };
 
@@ -66,18 +68,22 @@
                     text: "tags: " + checked.join(' '),
 					uh : modhash,
                     thing_id: $('.self').data().fullname
-               }, 
-               function(response) {
+               })
+               .done(function(response) {
                     console.log(response);
 					$('#tag-popup').bPopup().close();
 					location.reload();
-               }, 
-               'json');
+               })
+               .fail(function(response) {
+                   alert("Unexpected error occured! :..(");
+               }); 
 
     };
 
 
     function show_popup() {
+        if (tags.length <= 0) return;
+
         var ul = $('<ul class="tag-list">');
         for(var i=0;i<tags.length;i++) {
             ul.append($('<li><input class="tagbox" type="checkbox" value="'+tags[i].name+'"><span class="tag">'+tags[i].name+'</span></input><span>'+tags[i].desc+'</span></li>'));
@@ -109,29 +115,24 @@
     }
 
     function get_accepted_tags() {
-		if (tags.length > 0) {
-			show_popup();
-			return;
-		}
-        $.getJSON('http://www.reddit.com/r/hfy/wiki/tags/accepted.json', function(data) { 
-            console.log(data); 
-            var tmp = data.data.content_md.split('\n');
-            for(var i=0; i < tmp.length; i++) {
-                var s = tmp[i];
-                if(s.indexOf('*') != 0) continue;
-                var b = s.indexOf('[');
-                var e = s.indexOf(']');
-                var c = s.lastIndexOf(')');
+        $.get('http://www.reddit.com/r/'+reddit.post_site+'/wiki/tags/accepted')
+            .done(function(data) { 
+                var lis = $(data).find('.md.wiki ul li');
+                tags = lis.map(function(x, y) { return {name: $(y).find('a').text(), desc: $(y).find('p').text()} }).toArray();
 
-                tags.push({name: s.substring(b+1,e), desc: s.substring(c+1)});
                 tags.sort(function(a, b) {
                     if(a.name > b.name) return 1;
                     if(a.name == b.name) return 0;
                     if(a.name < b.name) return -1;
                 });
 
-            }
-			show_popup();
+                for(var i=0;i<tags.length;i++) {
+                    tag = tags[i];
+                    tag.desc = tag.desc.replace(tag.name, '');
+
+                }
+
+                show_popup();
         });
     };
 
@@ -154,7 +155,19 @@
             }
         );
 
+        $.get('http://www.reddit.com/r/'+reddit.post_site+'/wiki/tags/all')
+            .done(function(data) { 
+                var div = $('<div>');
+                div.html(data);
 
+                tags = $(div).find('a[href="'+document.location+'"]').parent().find('a').map(function(x) {return $(this).text()}).toArray();
+                tags = tags.filter(function(x) { if (x.indexOf('#')===0) return true; });
+                tags = tags.map(function(x) { return '#<a href="/r/'+reddit.post_site+'/wiki/tags/'+x.substring(1)+'">'+x.substring(1)+'</a>'; });
+                
+
+                $('#siteTable .entry .tagline').after('<p class="tagline">'+tags.join(' ')+'</p>');
+
+            });
     };
 
 })(window.taglib = window.taglib || {});

@@ -19,7 +19,7 @@ re_subreddit = re.compile('/r/([^/]*)')
 re_locked = re.compile('\* ([^\s]*)')
 re_list = re.compile('\* [^\n]*')
 re_name = re.compile('\[(.*)\]')
-re_title = re.compile('\[(oc|pi|jenkinsverse|j-verse|jverse|misc|nsfw)\]', re.IGNORECASE)
+re_title = re.compile('(\[|\()(oc|pi|jenkinsverse|j-verse|jverse|misc|nsfw)(\]|\))', re.IGNORECASE)
 re_command = re.compile('\[(tags|lock)\]', re.IGNORECASE)
 re_perm = re.compile('\((http[^)]*)\)')
 
@@ -47,11 +47,11 @@ class SortableLine:
             self.permalink = re_perm.findall(line)
             self.permalink= self.permalink[0]
 
-            self.sortby = self.name
+            self.sortby = self.name.lower()
             self.groupby = self.permalink
         except Exception, e:
             log.exception('Incorrect format!')
-            self.sortby = line
+            self.sortby = line.lower()
             self.name = line
 
     def __eq__(self, other):
@@ -63,7 +63,23 @@ class SortableLine:
 
 def sort_titles(titles):
     hp = HTMLParser()
-    return [x for x in sorted(set(titles), key=lambda x: x.sortby)]
+    alpha = [x for x in sorted(set(titles), key=lambda x: x.sortby) if x.sortby[0].isalpha() ]
+    digit = [x for x in sorted(set(titles), key=lambda x: x.sortby) if x.sortby[0].isdigit() ]
+    other = [x for x in sorted(set(titles), key=lambda x: x.sortby) if not x.sortby[0].isdigit() and not x.sortby[0].isalpha() ]
+
+
+    return digit + other + alpha
+
+def get_anchor(string):
+    first = string[0]
+
+    if first.isalpha():
+        return first.lower()
+
+    if first.isdigit():
+        return 'numbers'
+
+    return 'others'
 
 def format_wiki_page(lines, tag):
     anchor = None
@@ -76,15 +92,14 @@ def format_wiki_page(lines, tag):
     hp = HTMLParser()
     # add anchors based on first letter of the name
     for line in lines:
-        if line.name[0].lower() != anchor:
-            anchor = line.name[0].lower()
+        if get_anchor(line.sortby) != anchor:
+            anchor = get_anchor(line.sortby)
             ret.append('\n\n')
             ret.append('##%s' % anchor.upper())
             ret.append('\n\n')
         ret.append(hp.unescape(line.title_md))
 
     return "".join(ret)
-
 
 class TagBot:
     def __init__(self, subreddit):
@@ -191,6 +206,7 @@ class TagBot:
     #       probably have to change that
     def edit_wiki_page(self, tag, text):
         log.debug('updating wiki page %s' % (self.subreddit + '/tags/'+tag,))
+        if tag not in self.wiki_modification_time: self.wiki_modification_time[tag] = 0
 
         log.debug('wiki mod time before edit: %s' % self.wiki_modification_time[tag])
 
@@ -342,9 +358,34 @@ class TagBot:
     def read_locked(self):
         locked = self.get_wiki_page('locked')
         self.locked = re.findall(re_locked, locked.content_md)
-        
+
+    def update_global_tags(self):
+        tags = self.get_accepted_tags()
+        story_tags = {}
+        lines = {}
+
+        for tag in tags:
+            page = self.get_wiki_page(tag)
+
+            for line in [ SortableLine(line) for line in re.findall(re_list, page.content_md) ]:
+                if not line.permalink: continue
+                if line.permalink not in story_tags: story_tags[line.permalink] = []
+                story_tags[line.permalink] += [tag]
+
+                if line.permalink not in lines: 
+                    lines[line.permalink] = line
+
+        for permalink, tags in story_tags.iteritems():
+            taglinks = ' '.join(["[#%s](%s)" % (tag, '/r/'+self.subreddit+'/wiki/tags/'+tag) for tag in tags])
+            lines[permalink].title_md = lines[permalink].title_md.rstrip() + " " + taglinks + '\n\n'
+
+        md = format_wiki_page(sort_titles(lines.values()), 'All')
+
+        self.edit_wiki_page('all', md)
+            
     def run(self):
         config_counter = 0
+        all_counter = 0
 
         while True:
             log.debug('waking up')
@@ -360,9 +401,15 @@ class TagBot:
 
             if config_counter == 5:
                 self.read_config()
-                conifg_counter = 0
+                config_counter = 0
+
+            if all_counter == 10:
+                self.update_global_tags()
+                all_counter = 0
 
 
+            config_counter +=1
+            all_counter += 1
 def main():
     tagbot = TagBot(os.environ['REDDIT_SUBR'])
     while True:

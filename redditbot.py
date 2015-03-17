@@ -159,16 +159,13 @@ class TagBot:
             page = self.get_wiki_page(tag)
             self.wiki_modification_time[tag] = page.revision_date
             
-            import ipdb
-            ipdb.set_trace()
-
             lines = [ SortableLine(line) for line in re.findall(re_list, page.content_md) ]
             if tag not in removed:
-                lines += [ SortableLine('* [%s](%s) - by: [%s](/r/%s/wiki/%s)\n\n' % (comment.submission.title, 
-                                                                                      comment.submission.permalink, 
-                                                                                      comment.submission.author.name, 
-                                                                                      self.subreddit,
-                                                                                      comment.submission.author.name)) ]
+                lines += [ SortableLine('* [%s](%s) - by: [%s](/r/%s/wiki/authors/%s)\n\n' % (comment.submission.title, 
+                                                                                              comment.submission.permalink, 
+                                                                                              comment.submission.author.name, 
+                                                                                              self.subreddit,
+                                                                                              comment.submission.author.name)) ]
             else:
                 lines = [ x for x in lines if x.permalink != comment.submission.permalink ]
 

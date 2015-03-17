@@ -117,8 +117,8 @@
     function get_accepted_tags() {
         $.get('http://www.reddit.com/r/'+reddit.post_site+'/wiki/tags/accepted')
             .done(function(data) { 
-                var lis = $('.md.wiki ul li');
-                var tags = lis.map(function(x, y) { return {name: $(y).find('a').text(), desc: $(y).find('p').text()} }).toArray();
+                var lis = $(data).find('.md.wiki ul li');
+                tags = lis.map(function(x, y) { return {name: $(y).find('a').text(), desc: $(y).find('p').text()} }).toArray();
 
                 tags.sort(function(a, b) {
                     if(a.name > b.name) return 1;

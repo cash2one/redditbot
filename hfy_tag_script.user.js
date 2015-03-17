@@ -166,8 +166,6 @@
 
             $('#siteTable .entry .tagline').after('<p class="tagline">'+tags.join(' ')+'</p>');
         });
-
-
     };
 
 })(window.taglib = window.taglib || {});

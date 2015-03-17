@@ -4,7 +4,7 @@
 // @version      0.1
 // @description  enter something useful
 // @author       You
-// @include        http://www.reddit.com/r/hfy/comments/*
+// @include        http://www.reddit.com/r/hfy*/comments/*
 // @grant        none
 // ==/UserScript==
 //
@@ -22,7 +22,7 @@
 ;(function (ns, undefined) {
     var tags = [];
 	var modhash = "";
-    var bot_name = "hfy_tag_bot";
+    var bot_name = reddit.post_site + "_tag_bot";
 
     function add_global_style(css) {
         var head, style;
@@ -117,7 +117,7 @@
 			show_popup();
 			return;
 		}
-        $.getJSON('http://www.reddit.com/r/hfy/wiki/tags/accepted.json', function(data) { 
+        $.getJSON('http://www.reddit.com/r/'+reddit.post_site+'/wiki/tags/accepted.json', function(data) { 
             console.log(data); 
             var tmp = data.data.content_md.split('\n');
             for(var i=0; i < tmp.length; i++) {
@@ -158,14 +158,14 @@
             }
         );
 
-        $.get('http://www.reddit.com/r/hfy/wiki/tags/all')
+        $.get('http://www.reddit.com/r/'+reddit.post_site+'/wiki/tags/all')
             .done(function(data) { 
                 var div = $('<div>');
                 div.html(data);
 
                 tags = $(div).find('a[href="'+document.location+'"]').parent().find('a').map(function(x) {return $(this).text()}).toArray();
                 tags = tags.filter(function(x) { if (x.indexOf('#')===0) return true; });
-                tags = tags.map(function(x) { return '#<a href="/r/hfy/wiki/tags/'+x.substring(1)+'">'+x.substring(1)+'</a>'; });
+                tags = tags.map(function(x) { return '#<a href="/r/'+reddit.post_site+'/wiki/tags/'+x.substring(1)+'">'+x.substring(1)+'</a>'; });
                 
 
                 $('#siteTable .entry .tagline').after('<p class="tagline">'+tags.join(' ')+'</p>');

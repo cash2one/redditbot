@@ -82,6 +82,8 @@
 
 
     function show_popup() {
+        if (tags.length <= 0) return;
+
         var ul = $('<ul class="tag-list">');
         for(var i=0;i<tags.length;i++) {
             ul.append($('<li><input class="tagbox" type="checkbox" value="'+tags[i].name+'"><span class="tag">'+tags[i].name+'</span></input><span>'+tags[i].desc+'</span></li>'));
@@ -113,29 +115,24 @@
     }
 
     function get_accepted_tags() {
-		if (tags.length > 0) {
-			show_popup();
-			return;
-		}
-        $.getJSON('http://www.reddit.com/r/'+reddit.post_site+'/wiki/tags/accepted.json', function(data) { 
-            console.log(data); 
-            var tmp = data.data.content_md.split('\n');
-            for(var i=0; i < tmp.length; i++) {
-                var s = tmp[i];
-                if(s.indexOf('*') != 0) continue;
-                var b = s.indexOf('[');
-                var e = s.indexOf(']');
-                var c = s.lastIndexOf(')');
+        $.get('http://www.reddit.com/r/'+reddit.post_site+'/wiki/tags/accepted')
+            .done(function(data) { 
+                var lis = $('.md.wiki ul li');
+                var tags = lis.map(function(x, y) { return {name: $(y).find('a').text(), desc: $(y).find('p').text()} }).toArray();
 
-                tags.push({name: s.substring(b+1,e), desc: s.substring(c+1)});
                 tags.sort(function(a, b) {
                     if(a.name > b.name) return 1;
                     if(a.name == b.name) return 0;
                     if(a.name < b.name) return -1;
                 });
 
-            }
-			show_popup();
+                for(var i=0;i<tags.length;i++) {
+                    tag = tags[i];
+                    tag.desc = tag.desc.replace(tag.name, '');
+
+                }
+
+                show_popup();
         });
     };
 

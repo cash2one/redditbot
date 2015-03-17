@@ -360,7 +360,7 @@ class TagBot:
                     lines[line.permalink] = line
 
         for permalink, tags in story_tags.iteritems():
-            taglinks = ' '.join(["#[%s](%s)" % (tag, '/r/'+self.subreddit+'/wiki/tags/'+tag) for tag in tags])
+            taglinks = ' '.join(["[#%s](%s)" % (tag, '/r/'+self.subreddit+'/wiki/tags/'+tag) for tag in tags])
             lines[permalink].title_md = lines[permalink].title_md.rstrip() + " " + taglinks + '\n\n'
 
         md = format_wiki_page(sort_titles(lines.values()), 'All')

@@ -47,11 +47,11 @@ class SortableLine:
             self.permalink = re_perm.findall(line)
             self.permalink= self.permalink[0]
 
-            self.sortby = self.name
+            self.sortby = self.name.lower()
             self.groupby = self.permalink
         except Exception, e:
             log.exception('Incorrect format!')
-            self.sortby = line
+            self.sortby = line.lower()
             self.name = line
 
     def __eq__(self, other):
@@ -63,7 +63,23 @@ class SortableLine:
 
 def sort_titles(titles):
     hp = HTMLParser()
-    return [x for x in sorted(set(titles), key=lambda x: x.sortby)]
+    alpha = [x for x in sorted(set(titles), key=lambda x: x.sortby) if x.sortby[0].isalpha() ]
+    digit = [x for x in sorted(set(titles), key=lambda x: x.sortby) if x.sortby[0].isdigit() ]
+    other = [x for x in sorted(set(titles), key=lambda x: x.sortby) if not x.sortby[0].isdigit() and not x.sortby[0].isalpha() ]
+
+
+    return digit + other + alpha
+
+def get_anchor(string):
+    first = string[0]
+
+    if first.isalpha():
+        return first.lower()
+
+    if first.isdigit():
+        return 'numbers'
+
+    return 'others'
 
 def format_wiki_page(lines, tag):
     anchor = None
@@ -76,8 +92,8 @@ def format_wiki_page(lines, tag):
     hp = HTMLParser()
     # add anchors based on first letter of the name
     for line in lines:
-        if line.name[0].lower() != anchor:
-            anchor = line.name[0].lower()
+        if get_anchor(line.sortby) != anchor:
+            anchor = get_anchor(line.sortby)
             ret.append('\n\n')
             ret.append('##%s' % anchor.upper())
             ret.append('\n\n')

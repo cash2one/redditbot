@@ -385,6 +385,7 @@ class TagBot:
             
     def run(self):
         config_counter = 0
+        all_counter = 0
 
         while True:
             log.debug('waking up')
@@ -402,13 +403,18 @@ class TagBot:
                 self.read_config()
                 conifg_counter = 0
 
+            if all_counter = 10:
+                self.update_global_tags()
+                all_counter = 0
 
+
+            config_counter +=1
+            all_counter += 1
 def main():
     tagbot = TagBot(os.environ['REDDIT_SUBR'])
     while True:
         try:
-            #tagbot.run()
-            tagbot.update_global_tags()
+            tagbot.run()
         except Exception, e:
             log.exception(e)
             sleep(140)

@@ -469,3 +469,9 @@ def main():
 
 if __name__ == '__main__':
     main()        
+
+# a.parents(':header').nextAll('ul')[0]
+# d(a.parents(':header').nextAll('ul')[0]).append('<li>test</li>')
+#import HTMLParser
+#h = HTMLParser.HTMLParser()
+#print h.unescape('&pound;682m')

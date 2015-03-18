@@ -5,7 +5,6 @@ import re
 import logging as log
 from HTMLParser import HTMLParser
 from time import sleep
-from itertools import groupby
 
 
 #TODO:
@@ -22,6 +21,7 @@ re_name = re.compile('\[(.*)\]')
 re_title = re.compile('(\[|\()(oc|pi|jenkinsverse|j-verse|jverse|misc|nsfw)(\]|\))', re.IGNORECASE)
 re_command = re.compile('\[(tags|lock)\]', re.IGNORECASE)
 re_perm = re.compile('\((http[^)]*)\)')
+re_body = re.compile('\[([^]]*)\]')
 
 
 class UnableToEditWikiError(Exception): pass
@@ -37,7 +37,9 @@ class DummyAuthor:
 
 # expected format is: "* [title](link) - by: [author](link-to-authors-wiki)"
 class SortableLine:
-    def __init__(self, line):
+    def __init__(self, line=None):
+        if not line: return
+
         self.title_md = re_title.sub('', line).strip() + '\n\n'
 
         try:
@@ -48,11 +50,15 @@ class SortableLine:
             self.permalink= self.permalink[0]
 
             self.sortby = self.name.lower()
-            self.groupby = self.permalink
         except Exception, e:
             log.exception('Incorrect format!')
             self.sortby = line.lower()
             self.name = line
+
+    def params(self, title_md, name, permalink):
+        self.title_md = title_md
+        self.name = name
+        self.parmalink = permalink
 
     def __eq__(self, other):
         return self.permalink == other.permalink
@@ -223,7 +229,7 @@ class TagBot:
             raise UnableToEditWikiError()
 
 
-    def get_comments(self, limit=5000):
+    def get_comments(self, limit=1000):
         return self.account().get_comments(self.subreddit, limit=limit)
 
     def get_wiki_page(self, tag):
@@ -237,6 +243,12 @@ class TagBot:
 
     def get_last_seen(self):
         return self.account().get_wiki_page(self.subreddit, 'tags/last_seen')
+
+    def get_last_seen_submission(self):
+        return self.account().get_wiki_page(self.subreddit, 'last_seen_submission')
+
+    def save_last_seen_submission(self):
+        return self.account().edit_wiki_page(self.subreddit, 'last_seen_submission', self.last_seen_submission)
 
     def send_message(self, recipient, subject, message):
         try:
@@ -270,6 +282,31 @@ class TagBot:
             msg.reply("I'm sorry i can't seem to get submission from url: %s\n\nYou will have to try again :(\n\n(Error: %s)" % (msg.subject, e.message))
             msg.mark_as_read()
 
+    def check_submissions(self):
+        self.last_seen_submission = float(self.get_last_seen_submission().content_md)
+        self.new_last_seen_submission = self.last_seen_submission
+
+        log.debug('checking submissions')
+
+        for s in self.account().get_subreddit(self.subreddit).get_new(limit=10):
+            try:
+                if s.created <= self.last_seen_submission:
+                    break
+
+                self.process_submission(s)
+            except Exception, e:
+                #message codex_keeper?
+                log.exception("Error processing a submission")
+            finally:
+                if s.created > self.new_last_seen_submission:
+                    self.new_last_seen_submission = s.created
+
+        self.last_seen_submission = self.new_last_seen_submission
+        self.save_last_seen_submission()
+
+    def process_submission(self, sub):
+        log.debug("processing submission %s" % sub.permalink)
+
     def check_comments(self):
         log.debug('checking comments')
 
@@ -291,8 +328,8 @@ class TagBot:
             finally:
                 if tag_comment.created > self.new_last_seen:
                     self.new_last_seen = tag_comment.created
-
-	self.last_seen = self.new_last_seen
+     
+	    self.last_seen = self.new_last_seen
             
 
     def check_messages(self):
@@ -359,6 +396,16 @@ class TagBot:
         locked = self.get_wiki_page('locked')
         self.locked = re.findall(re_locked, locked.content_md)
 
+
+    def update_volunteers(self):
+        volunteers = []
+        for resp in account.get_redditor(os.environ['REDDIT_USER']).get_comments(limit=1000):
+            pass
+
+        for msg in account.get_inbox(limit=1000):
+            pass
+
+
     def update_global_tags(self):
         tags = self.get_accepted_tags()
         story_tags = {}
@@ -414,7 +461,8 @@ def main():
     tagbot = TagBot(os.environ['REDDIT_SUBR'])
     while True:
         try:
-            tagbot.run()
+           #tagbot.run()
+           tagbot.check_submissions()
         except Exception, e:
             log.exception(e)
             sleep(140)

@@ -1,17 +1,22 @@
-from pyquery import PyQuery as pq
-from HTMLParser import HTMLParser
 import logging as log
 import html2text
-
-from help import *
+import praw
+from pyquery import PyQuery as pq
+from HTMLParser import HTMLParser
+from time import sleep
 
 unescape_tags = HTMLParser().unescape
 headers = ['h%s' % x for x in range(1,10) ]
 html2md = html2text.HTML2Text()
 html2md.body_width = 0
 
+account = praw.Reddit(user_agent='redditbot 0.1 by /u/HFY_tag_bot')
+account.login('hfy_wiki_bot','dupa.8')
+account.subname = 'hfybeta'
+
+
 def sanitize_title(title):
-    pass
+	return title
 
 #TODO: allow to format entries (i'm looking at you someguynamedted)
 def format_series_link(name, link):
@@ -46,16 +51,32 @@ def create_author_page(post):
     oneshots = 'http://www.reddit.com/r/' + account.subname + '/wiki/authors/' + post.author.name +'/one-shots'
 
     txt = """
-    /u/%s
+/u/%s
 
-    ##**[One Shots](%s)**
+####[One Shots](%s)
 
-    * [s](%s)
+* [%s](%s)
 
 
-    """ %s (post.author.name, oneshots, sanitize_title(post.title), post.permalink)
+    """ % (post.author.name, oneshots, sanitize_title(post.title), post.permalink)
 
-    account.edit_wiki_page('authors/'+post.author.name, txt)
+    account.edit_wiki_page(account.subname, 'authors/'+post.author.name, txt)
+
+    sleep(3)
+
+    txt = """
+
+####[One Shots](/r/%s/wiki/authors/%s)
+
+* [%s](%s)
+
+
+    """ % (account.subname, post.author.name, sanitize_title(post.title), post.permalink)
+
+    account.edit_wiki_page(account.subname, 'authors/'+post.author.name+'/one-shots', txt)
+
+
+
 
 def update_series(wiki, story, series_url):
     q = pq(unescape_tags(wiki.content_html))

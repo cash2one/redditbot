@@ -10,6 +10,8 @@ headers = ['h%s' % x for x in range(1,10) ]
 html2md = html2text.HTML2Text()
 html2md.body_width = 0
 
+def sanitize_title(title):
+    pass
 
 #TODO: allow to format entries (i'm looking at you someguynamedted)
 def format_series_link(name, link):
@@ -31,6 +33,29 @@ def find_suitable_list(title):
         if el[0].tag.lower() in headers: break
         
         el = el.next()
+
+def add_one_shot(post):
+    page = account.get_wiki_page('authors/%s')
+    if not page:
+        create_autor_page(post)
+    else:
+        update_author_page(post)
+
+
+def create_author_page(post):
+    oneshots = 'http://www.reddit.com/r/' + account.subname + '/wiki/authors/' + post.author.name +'/one-shots'
+
+    txt = """
+    /u/%s
+
+    ##**[One Shots](%s)**
+
+    * [s](%s)
+
+
+    """ %s (post.author.name, oneshots, sanitize_title(post.title), post.permalink)
+
+    account.edit_wiki_page('authors/'+post.author.name, txt)
 
 def update_series(wiki, story, series_url):
     q = pq(unescape_tags(wiki.content_html))

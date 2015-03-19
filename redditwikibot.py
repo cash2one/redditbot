@@ -66,12 +66,14 @@ def create_author_page(post):
 
     txt = """
 
-####[One Shots](/r/%s/wiki/authors/%s)
+&nbsp;
+
+####[One Shots](/r/%s/wiki/authors/%s) by: %s
 
 * [%s](%s)
 
 
-    """ % (account.subname, post.author.name, sanitize_title(post.title), post.permalink)
+    """ % (account.subname, post.author.name, post.author.name, sanitize_title(post.title), post.permalink)
 
     account.edit_wiki_page(account.subname, 'authors/'+post.author.name+'/one-shots', txt)
 

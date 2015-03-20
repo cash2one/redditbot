@@ -22,11 +22,21 @@ def sanitize_title(title):
 def format_series_link(name, link):
     return '<p><a href="%s" rel="nofollow">%s</a></p>'% (link, name)
 
-def find_suitable_list(title):
-    #simple way: d(b.parents(':header').nextAll('ul')[0]).append('<li>test</li>')
-    #alas we have multiple lists under a single header sometimes (i'm looking at you someguynamedted)
-    #ok now we get the last ul element before encountering another header
-    #so a loop will have to do
+#simple way: d(b.parents(':header').nextAll('ul')[0]).append('<li>test</li>')
+#alas we have multiple lists under a single header sometimes (i'm looking at you someguynamedted)
+#ok now we get the last ul element before encountering another header
+#so a loop will have to do
+def find_series_list(q, series_url):
+    if series_url.endswith('/'): series_url = series_url[:-1]
+
+    a =  q('a[href^="%s"]' % series_url) 
+    title = q(a.parents(':header'))
+
+    if not title:
+        log.error('no title linking to that series found on %s' % wiki.page)
+        return 
+
+    log.debug('found matching title')
 
     ul = None
     el = title.next()
@@ -39,6 +49,8 @@ def find_suitable_list(title):
         
         el = el.next()
 
+    return ul
+
 def add_one_shot(post):
     page = account.get_wiki_page('authors/%s')
     if not page:
@@ -49,6 +61,8 @@ def add_one_shot(post):
 
 def create_author_page(post):
     oneshots = 'http://www.reddit.com/r/' + account.subname + '/wiki/authors/' + post.author.name +'/one-shots'
+
+    log.debug('creating wiki page for %s' % post.author.name)
 
     txt = """
 /u/%s
@@ -62,7 +76,7 @@ def create_author_page(post):
 
     account.edit_wiki_page(account.subname, 'authors/'+post.author.name, txt)
 
-    sleep(3)
+    log.debug('create one-shots wiki page for %s' % post.author.name)
 
     txt = """
 
@@ -77,32 +91,43 @@ def create_author_page(post):
 
     account.edit_wiki_page(account.subname, 'authors/'+post.author.name+'/one-shots', txt)
 
+    log.debug('author %s added to the wiki' % post.author.name)
 
 
+def update_authors_page(wiki_page, post):
+    oneshots = 'http://www.reddit.com/r/' + account.subname + '/wiki/authors/' + post.author.name +'/one-shots'
+    
+    q = pq(unescape_tags(wiki_page.content_html))
+    ul = find_series_list(q, oneshots)
 
-def update_series(wiki, story, series_url):
-    q = pq(unescape_tags(wiki.content_html))
-    if series_url.endswith('/'): series_url = series_url[:-1]
+    if not ul: 
+        log.error('unable to find suitable list for %s on %s!' % (oneshots, wiki.page))
+        return 
 
+    ul.append(q('<li>%s</li>' % format_series_link(post.title, post.permalink)))
+    q('.toc').remove() # reddit auto generates toc
+
+    log.debug('appending to %s' % wiki.page)
+
+    wiki_page.edit(html2md.handle(q.html())) #convert to markdown and edit page
+
+    update_series(wiki_page, post, oneshots)
+
+def update_series(wiki_page, post, series_url):
     log.debug('updating series %s' % series_url)
 
-    a =  q('a[href^="%s"]' % series_url) 
-    title = q(a.parents(':header'))
-
-    if not title:
-        log.error('no title linking to that series found on %s' % wiki.page)
-        return 
-
-    log.debug('found matching title')
-
-    ul = find_suitable_list(title)    
+    q = pq(unescape_tags(wiki_page.content_html))
+    ul = find_series_list(q, title)
     if not ul: 
-        log.error('unable to find suitable list on %s!' % wiki.page)
+        log.error('unable to find suitable list for %s on %s!' % (title, wiki_page.page))
         return 
     
-    ul.append(q('<li>%s</li>' % format_series_link(story.title, story.permalink)))
+    ul.append(q('<li>%s</li>' % format_series_link(post.title, post.permalink)))
     q('.toc').remove() # reddit auto generates toc
 
     log.debug('appending to wiki')
 
-    wiki.edit(html2md.handle(q.html())) #convert to markdown and edit page
+    wiki_page.edit(html2md.handle(q.html())) #convert to markdown and edit page
+
+page = account.get_submission("http://www.reddit.com/r/HFYBeta/comments/2yxaji/bla_bla_bla/")
+wiki = account.get_wiki_page("hfybeta", "authors/other-guy")

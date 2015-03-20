@@ -115,10 +115,10 @@ def update_authors_page(wiki_page, post):
     q('ul li:empty').remove()
 
     wiki_page.edit(html2md.handle(q.html())) #convert to markdown and edit page
-    update_series(account.get_wiki_page(account.subname, 'authors/%s/one-shots' % post.author.name), post, authors_wiki)
+    update_series_section(account.get_wiki_page(account.subname, 'authors/%s/one-shots' % post.author.name), post, authors_wiki)
 
 
-def create_series(wiki_page, post, name):
+def create_series_section(wiki_page, post, name):
     new_name = re.sub('[^0-9a-zA-Z]+', '_', name)
     series_url = 'http://www.reddit.com/r/' + account.subname + '/wiki/series/' + new_name
     authors_wiki = 'http://www.reddit.com/r/' + account.subname + '/wiki/authors/' + post.author.name
@@ -129,7 +129,7 @@ def create_series(wiki_page, post, name):
 
     if q('a[href^="%s"]' % series_url[:-1]):
         log.debug('series title already exist! updating instead')
-        update_series(wiki_page, post, series_url, q)
+        update_series_section(wiki_page, post, series_url, q)
         return
 
     head = q('div.wiki')
@@ -151,10 +151,10 @@ def create_series(wiki_page, post, name):
         qq = pq('<h2><a href="%s">%s</a></h2><ul/>')
     
 
-    update_series(wiki_page, post, series_url, q)
+    update_series_section(wiki_page, post, series_url, q)
 
 
-def update_series(wiki_page, post, series_url, q=None):
+def update_series_section(wiki_page, post, series_url, q=None):
     log.debug('editing series for %s on %s' % (series_url, wiki_page.page))
 
     if not q: q = pq(unescape_tags(wiki_page.content_html))

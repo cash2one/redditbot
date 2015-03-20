@@ -20,6 +20,12 @@ account.subname = 'hfybeta'
 
 re_title = re.compile('(\[|\()(oc|pi|jenkinsverse|j-verse|jverse|misc|nsfw)(\]|\))', re.IGNORECASE)
 
+
+class NewWikiPage:
+    def __init__(self, new_page):
+        self.page = 'new'
+        self.new_page = new_page
+
 def sanitize_title(title):
 	return re.sub(re_title, '', title)
 
@@ -118,41 +124,45 @@ def update_authors_page(wiki_page, post):
     update_series_section(account.get_wiki_page(account.subname, 'authors/%s/one-shots' % post.author.name), post, authors_wiki)
 
 
-def create_series_section(wiki_page, post, name):
+def create_series(author_wiki, post, name):
     new_name = re.sub('[^0-9a-zA-Z]+', '_', name)
     series_url = 'http://www.reddit.com/r/' + account.subname + '/wiki/series/' + new_name
-    authors_wiki = 'http://www.reddit.com/r/' + account.subname + '/wiki/authors/' + post.author.name
+    authors_url = 'http://www.reddit.com/r/' + account.subname + '/wiki/authors/' + post.author.name
 
     log.debug('creating series %s in location: /series/%s' % (name, new_name))
 
-    q = pq(unescape_tags(wiki_page.content_html))
+    q = pq(unescape_tags(author_wiki.content_html))
 
     if q('a[href^="%s"]' % series_url[:-1]):
         log.debug('series title already exist! updating instead')
-        update_series_section(wiki_page, post, series_url, q)
-        return
+    else:
+        head = q('div.wiki')
+        if not q('#wiki_series'):
+            head.append('<h2>Series</h2>')
 
-    head = q('div.wiki')
-    if not q('#wiki_series'):
-        head.append('<h2>Series</h2>')
-
-    head.append('<p/>')
-    head.append('<h4><a href="%s">%s</a></h4>' % (series_url, name.title()))
-    head.append('<ul></ul>')
+        head.append('<p/>')
+        head.append('<h4><a href="%s">%s</a></h4>' % (series_url, name.title()))
+        head.append('<ul></ul>')
 
     try:
-        series_page = account.get_wiki_page(account.subname, '/series/' + new_name)
-        qq = pq(unescape_tags(series_page.content_html))
+        series_wiki = account.get_author_wiki(account.subname, '/series/' + new_name)
+        qq = pq(unescape_tags(series_wiki.content_html))
 
         if not qq('a[href^="%s"]' % post.permalink[:-1]):
-            qq('div.wiki').append('<h2><a href="%s">%s</a></h2>' % (authors_wiki, name))
+            log.debug('Page exists but no title found. adding')
+            qq('div.wiki').append('<h2><a href="%s">%s</a></h2>' % (authors_url, name))
             qq('div.wiki').append('<ul></ul>')
     except:
-        qq = pq('<h2><a href="%s">%s</a></h2><ul/>')
+        qq = pq('<h2><a href="%s">%s</a></h2><ul/>' % (authors_url, name))
+        series_wiki = NewWikiPage('/series/'+new_name)
     
+   
+    update_series_page(series_wiki, post, authors_url, qq)
+    update_series_section(author_wiki, post, series_url, q)
 
+
+def update_series_page(wiki_page, post, series_url, q):
     update_series_section(wiki_page, post, series_url, q)
-
 
 def update_series_section(wiki_page, post, series_url, q=None):
     log.debug('editing series for %s on %s' % (series_url, wiki_page.page))
@@ -176,7 +186,10 @@ def update_series_section(wiki_page, post, series_url, q=None):
     q('ul li:empty').remove()
     q('.toc').remove() # reddit auto generates toc
 
-    wiki_page.edit(html2md.handle(q.html())) #convert to markdown and edit page
+    if wiki_page.page == 'new':
+        account.edit_wiki_page(account.subname, wiki_page.new_page, html2md.handle(q.html()))
+    else:
+        wiki_page.edit(html2md.handle(q.html())) #convert to markdown and edit page
 
 page = account.get_submission("http://www.reddit.com/r/HFYBeta/comments/2yfnci/oc_pancakes_test_nsfw/")
 wiki = account.get_wiki_page("hfybeta", "authors/other-guy")

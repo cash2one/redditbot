@@ -134,7 +134,7 @@ def create_series(author_wiki, post, name):
     q = pq(unescape_tags(author_wiki.content_html))
 
     if q('a[href^="%s"]' % series_url[:-1]):
-        log.debug('series title already exist! updating instead')
+        log.debug('series title already exist! updating')
     else:
         head = q('div.wiki')
         if not q('#wiki_series'):
@@ -145,14 +145,15 @@ def create_series(author_wiki, post, name):
         head.append('<ul></ul>')
 
     try:
-        series_wiki = account.get_author_wiki(account.subname, '/series/' + new_name)
+        series_wiki = account.get_wiki_page(account.subname, 'series/' + new_name)
         qq = pq(unescape_tags(series_wiki.content_html))
 
         if not qq('a[href^="%s"]' % post.permalink[:-1]):
             log.debug('Page exists but no title found. adding')
-            qq('div.wiki').append('<h2><a href="%s">%s</a></h2>' % (authors_url, name))
+            qq('div.wiki').append('<h2>%s - by: <a href="%s">%s</a></h2>' % (name, authors_url, post.author.name))
             qq('div.wiki').append('<ul></ul>')
     except:
+        log.exception('ups')
         qq = pq('<h2><a href="%s">%s</a></h2><ul/>' % (authors_url, name))
         series_wiki = NewWikiPage('/series/'+new_name)
     

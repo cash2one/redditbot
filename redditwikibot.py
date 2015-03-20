@@ -85,9 +85,7 @@ def create_author_page(post):
 
     txt = """
 
-&nbsp;
-
-####[/u/%s](%s) - One Shots
+##[/u/%s](%s) - One Shots
 
 * [%s](%s)
 
@@ -123,6 +121,7 @@ def update_authors_page(wiki_page, post):
 def create_series(wiki_page, post, name):
     new_name = re.sub('[^0-9a-zA-Z]+', '_', name)
     series_url = 'http://www.reddit.com/r/' + account.subname + '/wiki/series/' + new_name
+    authors_wiki = 'http://www.reddit.com/r/' + account.subname + '/wiki/authors/' + post.author.name
 
     log.debug('creating series %s in location: /series/%s' % (name, new_name))
 
@@ -140,6 +139,17 @@ def create_series(wiki_page, post, name):
     head.append('<p/>')
     head.append('<h4><a href="%s">%s</a></h4>' % (series_url, name.title()))
     head.append('<ul></ul>')
+
+    try:
+        series_page = account.get_wiki_page(account.subname, '/series/' + new_name)
+        qq = pq(unescape_tags(series_page.content_html))
+
+        if not qq('a[href^="%s"]' % post.permalink[:-1]):
+            qq('div.wiki').append('<h2><a href="%s">%s</a></h2>' % (authors_wiki, name))
+            qq('div.wiki').append('<ul></ul>')
+    except:
+        qq = pq('<h2><a href="%s">%s</a></h2><ul/>')
+    
 
     update_series(wiki_page, post, series_url, q)
 

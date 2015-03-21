@@ -17,6 +17,7 @@ html2md.body_width = 0
 account = praw.Reddit(user_agent='hfywikibot 0.1 by /u/HFY_wiki_bot')
 account.login('hfy_wiki_bot','dupa.8')
 account.subname = 'hfybeta'
+account.last_author = ''
 
 re_title = re.compile('(\[|\()(oc|pi|jenkinsverse|j-verse|jverse|misc|nsfw)(\]|\))', re.IGNORECASE)
 
@@ -27,7 +28,7 @@ class NewWikiPage:
         self.new_page = new_page
 
 def sanitize_title(title):
-	return re.sub(re_title, '', title)
+    return re.sub(re_title, '', title)
 
 #TODO: allow to format entries (i'm looking at you someguynamedted)
 def format_series_link(name, link):
@@ -123,8 +124,10 @@ def update_authors_page(wiki_page, post):
     wiki_page.edit(html2md.handle(q.html())) #convert to markdown and edit page
     update_series_section(account.get_wiki_page(account.subname, 'authors/%s/one-shots' % post.author.name), post, authors_wiki)
 
-
 def create_series(author_wiki, post, name):
+    if post.author.name == account.last_author:
+        sleep(31) # wait for praw cache to clear
+    account.last_author = post.author.name
     new_name = re.sub('[^0-9a-zA-Z]+', '_', name)
     series_url = 'http://www.reddit.com/r/' + account.subname + '/wiki/series/' + new_name
     authors_url = 'http://www.reddit.com/r/' + account.subname + '/wiki/authors/' + post.author.name
@@ -137,9 +140,12 @@ def create_series(author_wiki, post, name):
         log.debug('series title already exist! updating')
     else:
         head = q('div.wiki')
+
         if not q('#wiki_series'):
+            log.debug('appending Series section')
             head.append('<h2>Series</h2>')
 
+        log.debug('appending series title')
         head.append('<p/>')
         head.append('<h4><a href="%s">%s</a></h4>' % (series_url, name.title()))
         head.append('<ul></ul>')
@@ -148,17 +154,17 @@ def create_series(author_wiki, post, name):
         series_wiki = account.get_wiki_page(account.subname, 'series/' + new_name)
         qq = pq(unescape_tags(series_wiki.content_html))
 
-        if not qq('a[href^="%s"]' % post.permalink[:-1]):
+        if not qq('a[href^="%s"]' % authors_url[:-1]):
             log.debug('Page exists but no title found. adding')
             qq('div.wiki').append('<h2>%s - by: <a href="%s">%s</a></h2>' % (name, authors_url, post.author.name))
             qq('div.wiki').append('<ul></ul>')
     except:
-        log.exception('ups')
+        log.debug('creating new wiki page')
         qq = pq('<h2><a href="%s">%s</a></h2><ul/>' % (authors_url, name))
         series_wiki = NewWikiPage('/series/'+new_name)
     
-   
-    update_series_page(series_wiki, post, authors_url, qq)
+    if not qq('a[href^="%s"]' % series_url[:-1]):
+        update_series_page(series_wiki, post, authors_url, qq)
     update_series_section(author_wiki, post, series_url, q)
 
 

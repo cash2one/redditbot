@@ -32,7 +32,7 @@ def sanitize_title(title):
 
 #TODO: allow to format entries (i'm looking at you someguynamedted)
 def format_series_link(name, link):
-    return '<p><a href="%s" rel="nofollow">%s</a></p>'% (link, sanitize_title(name))
+    return '<p><a href="%s" rel="nofollow">%s</a></p>'% (link.lower(), sanitize_title(name))
 
 #simple way: d(b.parents(':header').nextAll('ul')[0]).append('<li>test</li>')
 #alas we have multiple lists under a single header sometimes (i'm looking at you someguynamedted)
@@ -41,7 +41,7 @@ def format_series_link(name, link):
 def find_series_list(q, series_url):
     if series_url.endswith('/'): series_url = series_url[:-1]
 
-    a =  q('a[href^="%s"]' % series_url) 
+    a =  q('a[href^="%s"]' % series_url.lower()) 
     title = q(a.parents(':header'))
 
     if not title:
@@ -136,7 +136,7 @@ def create_series(author_wiki, post, name):
 
     q = pq(unescape_tags(author_wiki.content_html))
 
-    if q('a[href^="%s"]' % series_url[:-1]):
+    if q('a[href^="%s"]' % series_url[:-1].lower()):
         log.debug('series title already exist! updating')
     else:
         head = q('div.wiki')
@@ -147,24 +147,29 @@ def create_series(author_wiki, post, name):
 
         log.debug('appending series title')
         head.append('<p/>')
-        head.append('<h4><a href="%s">%s</a></h4>' % (series_url, name.title()))
+        head.append('<h4><a href="%s">%s</a></h4>' % (series_url.lower(), name.title()))
         head.append('<ul></ul>')
 
     try:
         series_wiki = account.get_wiki_page(account.subname, 'series/' + new_name)
         qq = pq(unescape_tags(series_wiki.content_html))
 
-        if not qq('a[href^="%s"]' % authors_url[:-1]):
+        if not qq('a[href^="%s"]' % authors_url[:-1].lower()):
             log.debug('Page exists but no title found. adding')
-            qq('div.wiki').append('<h2>%s - by: <a href="%s">%s</a></h2>' % (name, authors_url, post.author.name))
+            qq('div.wiki').append('<h2>%s - by: <a href="%s">%s</a></h2>' % (name, authors_url.lower(), post.author.name))
             qq('div.wiki').append('<ul></ul>')
     except:
         log.debug('creating new wiki page')
-        qq = pq('<h2><a href="%s">%s</a></h2><ul/>' % (authors_url, name))
+        qq = pq('<h2><a href="%s">%s</a></h2><ul/>' % (authors_url.lower(), name))
         series_wiki = NewWikiPage('/series/'+new_name)
     
-    if not qq('a[href^="%s"]' % series_url[:-1]):
+    if qq('a[href^="%s"]' % series_url[:-1].lower()):
+        log.debug('series link already on a wiki page')
+    else:
+        import ipdb
+        ipdb.set_trace()
         update_series_page(series_wiki, post, authors_url, qq)
+
     update_series_section(author_wiki, post, series_url, q)
 
 
@@ -178,14 +183,16 @@ def update_series_section(wiki_page, post, series_url, q=None):
 
     log.debug('updating series %s' % series_url)
 
-    #remove link if it is in one shots
-    q('a[href^="%s"]' % post.permalink[:-1]).remove() 
-
     ul = find_series_list(q, series_url)
     if not ul: 
         log.error('unable to find suitable list for %s on %s!' % (series_url, wiki_page.page))
         return 
-    
+
+    #remove link if it is in one shots
+    import ipdb
+    ipdb.set_trace()
+    q('a[href^="%s"]' % post.permalink[:-1].lower()).remove() 
+
     ul.append(q('<li>%s</li>' % format_series_link(post.title, post.permalink)))
 
     log.debug('appending to wiki')

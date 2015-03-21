@@ -164,7 +164,7 @@ def create_series(author_wiki, post, name):
         series_wiki = NewWikiPage('/series/'+new_name)
     
     if qq('a[href^="%s"]' % post.permalink[:-1]):
-        log.debug('series link already on a wiki page')
+        log.error('series link already on a wiki page')
     else:
         update_series_page(series_wiki, post, authors_url, qq)
 
@@ -187,7 +187,7 @@ def update_series_section(wiki_page, post, series_url, q=None):
         return 
 
     if ul('a[href^="%s"]' % post.permalink[:-1]):
-        log.debug('post already in correct section')
+        log.error('post already in correct section')
         return
 
     #remove link if it is in one shots

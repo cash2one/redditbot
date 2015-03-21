@@ -64,14 +64,16 @@ def find_series_list(q, series_url):
     return ul
 
 def add_one_shot(post):
-    page = account.get_wiki_page('authors/%s')
+    page = get_wiki_page(account.subname, 'authors/' + post.author.name)
     if not page:
         create_autor_page(post)
     else:
-        update_author_page(post)
+        update_authors_page(page, post)
 
 
 def create_author_page(post):
+    log.debug('creating author page for %s' % post.author.name)
+
     authors_wiki = 'http://www.reddit.com/r/' + account.subname + '/wiki/authors/' + post.author.name
 
     log.debug('creating wiki page for %s' % post.author.name)
@@ -105,6 +107,7 @@ def create_author_page(post):
 
 
 def update_authors_page(wiki_page, post):
+    log.debug('updating authors page for %s' % post.author.name)
     authors_wiki = 'http://www.reddit.com/r/' + account.subname + '/wiki/authors/' + post.author.name
     
     q = pq(unescape_tags(wiki_page.content_html))
@@ -116,7 +119,7 @@ def update_authors_page(wiki_page, post):
 
     ul.append(q('<li>%s</li>' % format_series_link(post.title, post.permalink)))
 
-    log.debug('appending to %s' % wiki.page)
+    log.debug('appending to %s' % wiki_page.page)
 
     q('.toc').remove() # reddit auto generates toc
     q('ul li:empty').remove()
@@ -159,9 +162,7 @@ def prepare_series_wiki(name, new_name, authors_url, author):
 
     return series_wiki, qq
 
-def create_series(author_wiki, post, name):
-    if post.author.name == account.last_author:
-        sleep(31) # wait for praw cache to clear
+def add_to_series(author_wiki, post, name):
     account.last_author = post.author.name
     new_name = re.sub('[^0-9a-zA-Z]+', '_', name)
     series_url = 'http://www.reddit.com/r/' + account.subname + '/wiki/series/' + new_name
@@ -214,5 +215,34 @@ def update_series_section(wiki_page, post, series_url, q=None):
     else:
         account.edit_wiki_page(account.subname, wiki_page.page, html2md.handle(q.html()))
 
-page = account.get_submission("http://www.reddit.com/r/HFYBeta/comments/2yfnci/oc_pancakes_test_nsfw/")
-wiki = account.get_wiki_page("hfybeta", "authors/other-guy")
+def get_wiki_page(sub, page):
+    try:
+        return account.get_wiki_page(sub, page)
+    except:
+        log.exception('error getting wiki page %s' % page)
+
+def check_submissions():
+    while True:
+        sleep(30)
+        log.debug('waking up!')
+        new = account.get_subreddit(account.subname).get_new(limit=10)
+
+        for submission in new:
+            try:
+                log.debug('checking submission %s', submission.permalink)
+                if not submission.link_flair_text in ['OC', 'PI']: 
+                    log.debug('no flair, continuing')
+                    continue
+                   
+                add_one_shot(submission)
+            except:
+                log.exception('Error processing %s' % submission.permalink)
+
+        log.debug('going to sleep...')
+
+def check_messages():
+    pass
+
+check_submissions()
+#page = account.get_submission("http://www.reddit.com/r/HFYBeta/comments/2yfnci/oc_pancakes_test_nsfw/")
+#wiki = account.get_wiki_page("hfybeta", "authors/other-guy")

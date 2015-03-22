@@ -21,11 +21,34 @@ account.last_author = ''
 
 re_title = re.compile('(\[|\()(oc|pi|jenkinsverse|j-verse|jverse|misc|nsfw)(\]|\))', re.IGNORECASE)
 
+class InvalidURLError(Exception): pass
 
 class NewWikiPage:
     def __init__(self, new_page):
         self.page = 'new'
         self.new_page = new_page
+
+def find_link(ul, link):
+    if link[-1] == '/': link = link[:-1]
+    i = link.rfind('/r/')
+
+    if i == -1:
+        log.error('link %s is not a submission' % link)
+        return None
+
+    link = link[i:].lower()
+
+    if not link[3:].startswith(account.subname.lower()):
+        log.error('link %s is not valid for this subreddit' % link)
+        return None
+
+    for a in ul('a'):
+        href = a.attrib['href']
+        if href[-1] == '/': href = href[:-1]
+
+        href = href[href.rfind('/r/'):].lower()
+
+        if href == link: return a
 
 def sanitize_title(title):
     return re.sub(re_title, '', title)
@@ -45,7 +68,7 @@ def find_series_list(q, series_url):
     title = q(a.parents(':header'))
 
     if not title:
-        log.error('no title linking to that series found on %s' % wiki.page)
+        log.error('no title linking to that series found')
         return 
 
     log.debug('found matching title')
@@ -114,8 +137,12 @@ def update_authors_page(wiki_page, post):
     ul = find_series_list(q, authors_wiki + '/one-shots')
 
     if not ul: 
-        log.error('unable to find suitable list for %s on %s!' % (authors_wiki + '/one-shots', wiki.page))
+        log.error('unable to find suitable list for %s on %s! creating...' % (authors_wiki + '/one-shots', wiki.page))
         return 
+
+    if find_link(ul, post.permalink) is not None: 
+        log.debug('link alredy in correct place')
+        return
 
     ul.append(q('<li>%s</li>' % format_series_link(post.title, post.permalink)))
 
@@ -130,7 +157,7 @@ def update_authors_page(wiki_page, post):
 def prepare_author_wiki(author_wiki, series_url, name):
     q = pq(unescape_tags(author_wiki.content_html))
 
-    if q('a[href^="%s"]' % series_url[:-1]):
+    if find_link(q, series_url) is not None:
         log.debug('series title already exist! updating')
     else:
         head = q('div.wiki')
@@ -173,7 +200,7 @@ def add_to_series(author_wiki, post, name):
     q = prepare_author_wiki(author_wiki, series_url, name)
     series_wiki, qq = prepare_series_wiki(name, new_name, authors_url, post.author.name)
     
-    if qq('a[href^="%s"]' % post.permalink[:-1]):
+    if find_link(qq, post.permalink) is not None:
         log.error('series link already on a wiki page')
     else:
         update_series_page(series_wiki, post, authors_url, qq)
@@ -196,7 +223,7 @@ def update_series_section(wiki_page, post, series_url, q=None):
         log.error('unable to find suitable list for %s on %s!' % (series_url, wiki_page.page))
         return 
 
-    if ul('a[href^="%s"]' % post.permalink[:-1]):
+    if find_link(ul, post.permalink) is not None:
         log.error('post already in correct section')
         return
 
@@ -225,7 +252,7 @@ def check_submissions():
     while True:
         sleep(30)
         log.debug('waking up!')
-        new = account.get_subreddit(account.subname).get_new(limit=10)
+        new = account.get_subreddit(account.subname).get_new(limit=1)
 
         for submission in new:
             try:

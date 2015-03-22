@@ -28,6 +28,9 @@ class NewWikiPage:
         self.page = 'new'
         self.new_page = new_page
 
+def wiki_text(content):
+    return html2md(pq(content).html())
+
 def find_link(ul, link):
     if link[-1] == '/': link = link[:-1]
     i = link.rfind('/r/')
@@ -86,45 +89,49 @@ def find_series_list(q, series_url):
 
     return ul
 
-def add_one_shot(post):
-    page = get_wiki_page(account.subname, 'authors/' + post.author.name)
-    if not page:
-        create_autor_page(post)
-    else:
-        update_authors_page(page, post)
-
-
-def create_author_page(post):
-    log.debug('creating author page for %s' % post.author.name)
-
+def new_series_section(post):
     authors_wiki = 'http://www.reddit.com/r/' + account.subname + '/wiki/authors/' + post.author.name
 
-    log.debug('creating wiki page for %s' % post.author.name)
-
-    txt = """
-/u/%s
-
-####[One Shots](%s)
-
-* [%s](%s)
-
-
+    content = """
+<h2><a href="%s">%s</a></h2>
     """ % (post.author.name, authors_wiki + '/one-shots', sanitize_title(post.title), post.permalink)
 
-    account.edit_wiki_page(account.subname, 'authors/'+post.author.name, txt)
+    return pq(content)
+
+def new_series_page(post):
+    authors_wiki = 'http://www.reddit.com/r/' + account.subname + '/wiki/authors/' + post.author.name
+
+    content = """
+<h2>One Shots - by: <a href="%s">%s</a></h2>
+    """ % (authors_wiki, post.author.name)
+
+    return pq(content)
+
+
+def add_one_shot(post):
+    authors_link = 'http://www.reddit.com/r/' + account.subname + '/wiki/authors/' + post.author.name
+    one_shots_link = 'http://www.reddit.com/r/' + account.subname + '/wiki/authors/' + post.author.name + '/one-shots'
+
+    log.debug('adding one shot %s for %s' % (post.permalink, post.author.name))
+
+    try:
+        authors_wiki = account.get_wiki_page(account.subname, 'authors/%s/%s' % (post.author.name, 'one-shots'))
+        q = pq(unescape_tags(authors_wiki.content_html))
+        ul = find_series_list(q, authors_wiki + '/one-shots')
+    if not ul: 
+        log.error('unable to find suitable list for %s on %s! creating...' % (authors_wiki + '/one-shots', wiki.page))
+        return 
+
+    except:
+        log.exception('unable to get wiki page for %s' % authors_link)
+
+    md = html2md(new_series_section().html())
+    account.edit_wiki_page(account.subname, 'authors/'+post.author.name, md)
 
     log.debug('create one-shots wiki page for %s' % post.author.name)
 
-    txt = """
-
-##[/u/%s](%s) - One Shots
-
-* [%s](%s)
-
-
-    """ % (post.author.name, authors_wiki, sanitize_title(post.title), post.permalink)
-
-    account.edit_wiki_page(account.subname, 'authors/'+post.author.name+'/one-shots', txt)
+    md = html2md(new_series_page().html())
+    account.edit_wiki_page(one_shots_link, md)
 
     log.debug('author %s added to the wiki' % post.author.name)
 

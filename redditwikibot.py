@@ -118,7 +118,7 @@ def verify_one_shots(post):
         q = pq(unescape_tags(authors_wiki.content_html))
     except HTTPError, e:
         if e.message.startswith('404'):
-            q = '<a href="/u/%s">/u/%s</a>' % (post.author.name, post.author.name)
+            q = pq('<a href="/u/%s">/u/%s</a>' % (post.author.name, post.author.name))
         else:
             raise
     except Exception, e:
@@ -130,7 +130,7 @@ def verify_one_shots(post):
         h = pq('<h4><a href="%s">One Shots</a></h4>')
         ul = pq('<ul></ul>')
         h.append(ul)
-        q.prepend(h)
+        q(':header').before(h)
 
     return q
 

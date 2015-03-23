@@ -127,7 +127,7 @@ def verify_one_shots(post):
     ul = find_series_list(q, authors_wlink + '/one-shots')
 
     if not ul: #no title with link found
-        h = pq('<h4><a href="%s">One Shots</a></h4>')
+        h = pq('<h2><a href="%s">One Shots</a></h2>')
         ul = pq('<ul></ul>')
         h.append(ul)
         q(':header').before(h)

@@ -5,12 +5,12 @@ import praw
 from pyquery import PyQuery as pq
 from HTMLParser import HTMLParser
 from time import sleep
+from requests.exceptions import HTTPError
 
 
 log.basicConfig(level=log.DEBUG)
 
 unescape_tags = HTMLParser().unescape
-headers = ['h%s' % x for x in range(1,10) ]
 html2md = html2text.HTML2Text()
 html2md.body_width = 0
 
@@ -65,9 +65,8 @@ def format_series_link(name, link):
 #ok now we get the last ul element before encountering another header
 #so a loop will have to do
 def find_series_list(q, series_url):
-    if series_url.endswith('/'): series_url = series_url[:-1]
-
-    a =  q('a[href^="%s"]' % series_url) 
+    headers = ['h%s' % x for x in range(1,10) ]
+    a = find_link(q, series_url)
     title = q(a.parents(':header'))
 
     if not title:
@@ -87,26 +86,53 @@ def find_series_list(q, series_url):
         
         el = el.next()
 
+    if ul is None:
+        ul = pq('<ul></ul>')
+        title.after(ul)
+
     return ul
 
 def new_series_section(post):
-    authors_wiki = 'http://www.reddit.com/r/' + account.subname + '/wiki/authors/' + post.author.name
+    authors_wlink= 'http://www.reddit.com/r/' + account.subname + '/wiki/authors/' + post.author.name
 
     content = """
 <h2><a href="%s">%s</a></h2>
-    """ % (post.author.name, authors_wiki + '/one-shots', sanitize_title(post.title), post.permalink)
+    """ % (post.author.name, authors_wlink+ '/one-shots', sanitize_title(post.title), post.permalink)
 
     return pq(content)
 
 def new_series_page(post):
-    authors_wiki = 'http://www.reddit.com/r/' + account.subname + '/wiki/authors/' + post.author.name
+    authors_wlink= 'http://www.reddit.com/r/' + account.subname + '/wiki/authors/' + post.author.name
 
     content = """
 <h2>One Shots - by: <a href="%s">%s</a></h2>
-    """ % (authors_wiki, post.author.name)
+    """ % (authors_wlink, post.author.name)
 
     return pq(content)
 
+def verify_one_shots(post):
+    authors_wlink = 'http://www.reddit.com/r/' + account.subname + '/wiki/authors/' + post.author.name
+
+    try:
+        authors_wiki = account.get_wiki_page(account.subname, 'authors/%s' % (post.author.name))
+        q = pq(unescape_tags(authors_wiki.content_html))
+    except HTTPError, e:
+        if e.message.startswith('404'):
+            q = '<a href="/u/%s">/u/%s</a>' % (post.author.name, post.author.name)
+        else:
+            raise
+    except Exception, e:
+        raise
+
+    ul = find_series_list(q, authors_wlink + '/one-shots')
+
+    if not ul: #no title with link found
+        h = pq('<h4><a href="%s">One Shots</a></h4>')
+        ul = pq('<ul></ul>')
+        h.append(ul)
+        q.prepend(h)
+
+    return q
 
 def add_one_shot(post):
     authors_link = 'http://www.reddit.com/r/' + account.subname + '/wiki/authors/' + post.author.name
@@ -115,12 +141,12 @@ def add_one_shot(post):
     log.debug('adding one shot %s for %s' % (post.permalink, post.author.name))
 
     try:
-        authors_wiki = account.get_wiki_page(account.subname, 'authors/%s/%s' % (post.author.name, 'one-shots'))
-        q = pq(unescape_tags(authors_wiki.content_html))
-        ul = find_series_list(q, authors_wiki + '/one-shots')
-    if not ul: 
-        log.error('unable to find suitable list for %s on %s! creating...' % (authors_wiki + '/one-shots', wiki.page))
-        return 
+        q = get_one_shot_section(post)
+        ul = find_series_list(q, authors_link + '/one-shots')
+
+        if not ul: 
+            log.error('unable to find suitable list for %s on %s! creating...' % (authors_link+ '/one-shots', wiki.page))
+
 
     except:
         log.exception('unable to get wiki page for %s' % authors_link)
@@ -277,6 +303,6 @@ def check_submissions():
 def check_messages():
     pass
 
-check_submissions()
+#check_submissions()
 #page = account.get_submission("http://www.reddit.com/r/HFYBeta/comments/2yfnci/oc_pancakes_test_nsfw/")
 #wiki = account.get_wiki_page("hfybeta", "authors/other-guy")

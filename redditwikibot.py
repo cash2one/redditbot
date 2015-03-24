@@ -67,6 +67,7 @@ def format_series_link(name, link):
 def find_series_list(q, series_url):
     headers = ['h%s' % x for x in range(1,10) ]
     a = find_link(q, series_url)
+    if not a: return None
     title = q(a.parents(':header'))
 
     if not title:
@@ -110,14 +111,19 @@ def new_series_page(post):
 
     return pq(content)
 
-def verify_one_shots(post):
+
+def verify_one_shot_section(post):
     authors_wlink = 'http://www.reddit.com/r/' + account.subname + '/wiki/authors/' + post.author.name
 
     try:
         authors_wiki = account.get_wiki_page(account.subname, 'authors/%s' % (post.author.name))
         q = pq(unescape_tags(authors_wiki.content_html))
+        if find_link(q, post.permalink):
+            log.error('link already in one shots section')
+            return
     except HTTPError, e:
         if e.message.startswith('404'):
+            log.debug('authors wiki page does not exist - creating')
             q = pq('<a href="/u/%s">/u/%s</a>' % (post.author.name, post.author.name))
         else:
             raise
@@ -127,12 +133,49 @@ def verify_one_shots(post):
     ul = find_series_list(q, authors_wlink + '/one-shots')
 
     if not ul: #no title with link found
-        h = pq('<h2><a href="%s">One Shots</a></h2>')
-        ul = pq('<ul></ul>')
-        h.append(ul)
-        q(':header').before(h)
+        log.debug('one-shot section not found on author page - creating')
+        h = pq('<h2><a href="%s/one-shots">One Shots</a></h2><ul></ul>' % authors_wlink)
 
-    return q
+        if q(':header'):
+            q(':header').before(h)
+        else:
+            q.prepend(h)
+
+    ul.append('<li><a href="%s">%s</a></li>' % (post.permalink, sanitize_title(post.title)))
+    account.edit_wiki_page(account.subname, 'authors/%s' % post.author.name, html2md.handle(q.html()))
+
+
+def verify_one_shot_wiki(post):
+    authors_wlink = 'http://www.reddit.com/r/' + account.subname + '/wiki/authors/' + post.author.name
+
+    try:
+        oneshots_wiki = account.get_wiki_page(account.subname, 'authors/%s/one-shots' % (post.author.name))
+        q = pq(unescape_tags(oneshots_wiki.content_html))
+        if find_link(q, post.permalink):
+            log.error('link already on one shots page')
+            return
+    except HTTPError, e:
+        if e.message.startswith('404'):
+            log.debug('one shots wiki page does not exist - creating')
+            q = pq('<h2>One Shots - by: <a href="/u/%s">/u/%s</a></h2><ul/>' % (post.author.name, post.author.name))
+        else:
+            raise
+    except Exception, e:
+        raise
+
+    ul = find_series_list(q, authors_wlink+'/one-shots')
+    if not ul: 
+        log.debug('one-shot section not found on author page - creating')
+        h = pq('<h2>One Shots - by: <a href="/u/%s/one-shots">/u/%s</a></h2><ul></ul>' % (post.author.name, post.author.name))
+
+        q.prepend(h)
+
+    ul.append('<li><a href="%s">%s</a></li>' % (post.permalink, sanitize_title(post.title)))
+    account.edit_wiki_page(account.subname, 'authors/%s/one-shots' % post.author.name, html2md.handle(q.html()))
+
+def verify_one_shots(post):
+    verify_one_shot_section(post)
+    verify_one_shot_wiki(post)
 
 def add_one_shot(post):
     authors_link = 'http://www.reddit.com/r/' + account.subname + '/wiki/authors/' + post.author.name
@@ -303,6 +346,7 @@ def check_submissions():
 def check_messages():
     pass
 
-#check_submissions()
+sub = account.get_submission('http://www.reddit.com/r/HFYBeta/comments/2z7qy5/octhe_history_of_humans_1011/')
+div = verify_one_shots(sub)
 #page = account.get_submission("http://www.reddit.com/r/HFYBeta/comments/2yfnci/oc_pancakes_test_nsfw/")
 #wiki = account.get_wiki_page("hfybeta", "authors/other-guy")

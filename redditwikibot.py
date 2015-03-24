@@ -112,13 +112,16 @@ def new_series_page(post):
 
     return pq(content)
 
-def format_for_edit(post, wiki_page, series_url, initial_text):
+def add_series_section(wiki_page_name):
+    pass
+
+def format_for_edit(post, wiki_page_name, series_url, initial_text):
     try:
-        wiki = account.get_wiki_page(account.subname, wiki_page)
+        wiki = account.get_wiki_page(account.subname, wiki_page_name)
         q = pq(unescape_tags(wiki.content_html))
     except HTTPError, e:
         if e.message.startswith('404'):
-            log.debug('%s wiki page does not exist - creating' % wiki_page)
+            log.debug('%s wiki page does not exist - creating' % wiki_page_name)
             q = pq(initial_text)
         else:
             raise
@@ -129,8 +132,8 @@ def format_for_edit(post, wiki_page, series_url, initial_text):
 
     if not ul: #no title with link found
         log.debug('list for %s not found on author page - creating' % series_url)
-        h = pq(initial_text)
-        ul = h('ul')
+        q = pq(initial_text)
+        ul = q('ul')
 
     if find_link(ul, post.permalink) is not None:
         log.error('link already in one shots section')
@@ -138,8 +141,8 @@ def format_for_edit(post, wiki_page, series_url, initial_text):
 
     ul.append('<li><a href="%s">%s</a></li>' % (post.permalink, sanitize_title(post.title)))
 
-    import ipdb
-    ipdb.set_trace()
+    q('.toc').remove()
+    q('ul li:empty').remove()
 
     return q
 
@@ -181,19 +184,21 @@ def verify_one_shot_section(post):
 def test(post):
     # format_for_edit(post, wiki_page, series_url, initial_text):
     authors_wiki = 'authors/%s' % (post.author.name)
-    series_url = '/r/%s/authors/%s/one-shots' % (account.subname, post.author.name)
+    series_url = '/r/%s/wiki/authors/%s/one-shots' % (account.subname, post.author.name)
     initial_text = '<h2><a href="%s">One Shots</a></h2><ul/>' % series_url
 
 
     q = format_for_edit(post, authors_wiki, series_url, initial_text)
-    account.edit_wiki_page(account.subname, 'authors/%s' % post.author.name, html2md.handle(q.html()))
+    if q is not None and q.html() is not None:
+        account.edit_wiki_page(account.subname, 'authors/%s' % post.author.name, html2md.handle(q.html()))
 
     authors_wiki = 'authors/%s/one-shots' % (post.author.name)
-    series_url = '/r/%s/authors/%s' % (account.subname, post.author.name)
+    series_url = '/r/%s/wiki/authors/%s' % (account.subname, post.author.name)
     initial_text = '<h2>One Shots - by: <a href="%s">%s</a></h2><ul/>' % (series_url, post.author.name)
 
     q = format_for_edit(post, authors_wiki, series_url, initial_text)
-    account.edit_wiki_page(account.subname, 'authors/%s/one-shots' % post.author.name, html2md.handle(q.html()))
+    if q is not None and q.html() is not None:
+        account.edit_wiki_page(account.subname, 'authors/%s/one-shots' % post.author.name, html2md.handle(q.html()))
 
 def verify_one_shot_wiki(post):
     authors_wlink = 'http://www.reddit.com/r/' + account.subname + '/wiki/authors/' + post.author.name
@@ -398,6 +403,7 @@ def check_messages():
     pass
 
 sub = account.get_submission('http://www.reddit.com/r/HFYBeta/comments/2z7qy5/octhe_history_of_humans_1011/')
+sub1= account.get_submission('http://www.reddit.com/r/HFYBeta/comments/2yk6ef/test/')
 #div = verify_one_shots(sub)
 #page = account.get_submission("http://www.reddit.com/r/HFYBeta/comments/2yfnci/oc_pancakes_test_nsfw/")
 #wiki = account.get_wiki_page("hfybeta", "authors/other-guy")

@@ -134,7 +134,8 @@ def verify_one_shot_section(post):
 
     if not ul: #no title with link found
         log.debug('one-shot section not found on author page - creating')
-        h = pq('<h2><a href="%s/one-shots">One Shots</a></h2><ul></ul>' % authors_wlink)
+        h = pq('<h2><a href="%s/one-shots">One Shots</a></h2><ul/>' % authors_wlink)
+        ul = h('ul')
 
         if q(':header'):
             q(':header').before(h)
@@ -166,7 +167,8 @@ def verify_one_shot_wiki(post):
     ul = find_series_list(q, authors_wlink+'/one-shots')
     if not ul: 
         log.debug('one-shot section not found on author page - creating')
-        h = pq('<h2>One Shots - by: <a href="/u/%s/one-shots">/u/%s</a></h2><ul></ul>' % (post.author.name, post.author.name))
+        h = pq('<h2>One Shots - by: <a href="/u/%s">/u/%s</a></h2><ul></ul>' % (post.author.name, post.author.name))
+        ul = h('ul')
 
         q.prepend(h)
 

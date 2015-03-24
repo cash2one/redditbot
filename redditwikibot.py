@@ -51,7 +51,7 @@ def find_link(ul, link):
 
         href = href[href.rfind('/r/'):].lower()
 
-        if href == link: return a
+        if href == link: return pq(a)
 
 def sanitize_title(title):
     return re.sub(re_title, '', title)
@@ -67,7 +67,8 @@ def format_series_link(name, link):
 def find_series_list(q, series_url):
     headers = ['h%s' % x for x in range(1,10) ]
     a = find_link(q, series_url)
-    if not a: return None
+    if a is None: return None
+
     title = q(a.parents(':header'))
 
     if not title:
@@ -118,7 +119,7 @@ def verify_one_shot_section(post):
     try:
         authors_wiki = account.get_wiki_page(account.subname, 'authors/%s' % (post.author.name))
         q = pq(unescape_tags(authors_wiki.content_html))
-        if find_link(q, post.permalink):
+        if find_link(q, post.permalink) is not None:
             log.error('link already in one shots section')
             return
     except HTTPError, e:
@@ -158,16 +159,16 @@ def verify_one_shot_wiki(post):
     except HTTPError, e:
         if e.message.startswith('404'):
             log.debug('one shots wiki page does not exist - creating')
-            q = pq('<h2>One Shots - by: <a href="/u/%s">/u/%s</a></h2><ul/>' % (post.author.name, post.author.name))
+            q = pq('<h2>One Shots - by: <a href="%s">/%s</a></h2><ul/>' % (authors_wlink, post.author.name))
         else:
             raise
     except Exception, e:
         raise
 
-    ul = find_series_list(q, authors_wlink+'/one-shots')
+    ul = find_series_list(q, authors_wlink)
     if not ul: 
         log.debug('one-shot section not found on author page - creating')
-        h = pq('<h2>One Shots - by: <a href="/u/%s">/u/%s</a></h2><ul></ul>' % (post.author.name, post.author.name))
+        h = pq('<h2>One Shots - by: <a href="%s">%s</a></h2><ul></ul>' % (authors_wlink, post.author.name))
         ul = h('ul')
 
         q.prepend(h)

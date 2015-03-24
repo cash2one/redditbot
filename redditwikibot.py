@@ -112,8 +112,15 @@ def new_series_page(post):
 
     return pq(content)
 
-def add_series_section(wiki_page_name):
-    pass
+def add_series_section(q):
+    if not q('#wiki_series'):
+        log.debug('appending Series section')
+        series = q(':header a[href*="/wiki/series/"]') 
+
+        if series:
+            series.prepend('<h2>Series</h2>')
+        else:
+            q.append('<h2>Series</h2>')
 
 def format_for_edit(post, wiki_page_name, series_url, initial_text):
     try:
@@ -135,8 +142,8 @@ def format_for_edit(post, wiki_page_name, series_url, initial_text):
         q = pq(initial_text)
         ul = q('ul')
 
-    if find_link(ul, post.permalink) is not None:
-        log.error('link already in one shots section')
+    if find_link(ul, post.permalink):
+        log.error('link already in %s section' % series_url)
         return
 
     ul.append('<li><a href="%s">%s</a></li>' % (post.permalink, sanitize_title(post.title)))

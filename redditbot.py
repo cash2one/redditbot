@@ -220,7 +220,7 @@ class TagBot:
             if self.wiki_modification_time[tag] < page.revision_date: break
             sleep(2)
         else:
-            raise UnableToEditWikiError()
+            raise UnableToEditWikiError('Unable to confirm wiki edit. sorry :(')
 
 
     def get_comments(self, limit=5000):

@@ -21,6 +21,7 @@ account.last_author = ''
 re_title = re.compile('(\[|\()(oc|pi|jenkinsverse|j-verse|jverse|misc|nsfw)(\]|\))', re.IGNORECASE)
 
 class InvalidURLError(Exception): pass
+class UnableToInitSectionError(Exception): pass
 
 class NewWikiPage:
     def __init__(self, new_page):
@@ -70,7 +71,7 @@ def find_series_list(q, series_url):
         log.error('no title linking to that series found')
         return 
 
-    log.debug('found matching title')
+    log.debug('found matching series title for %s' % series_url)
 
     ul = None
     el = title.next()
@@ -84,6 +85,7 @@ def find_series_list(q, series_url):
         el = el.next()
 
     if ul is None:
+        log.debug("no list under title found, creating...")
         ul = pq('<ul></ul>')
         title.after(ul)
 
@@ -99,14 +101,14 @@ def add_series_section(q):
         else:
             q.append('<h2>Series</h2>')
 
-def format_for_edit(post, wiki_page_name, series_url, initial_text):
+def format_for_edit(post, wiki_page_name, series_url, init_section):
     try:
         wiki = account.get_wiki_page(account.subname, wiki_page_name)
         q = pq(unescape_tags(wiki.content_html))
     except HTTPError, e:
-        if e.message.startswith('404'):
+        if e.message.startswith('404'): # page does not exist
             log.debug('%s wiki page does not exist - creating' % wiki_page_name)
-            q = pq(initial_text)
+            q = init_section()
         else:
             raise
     except Exception, e:
@@ -114,10 +116,14 @@ def format_for_edit(post, wiki_page_name, series_url, initial_text):
 
     ul = find_series_list(q, series_url)
 
-    if not ul: #no title with link found
+    import ipdb
+    ipdb.set_trace()
+    if not ul: #page exists but no link to series found in <h> element
         log.debug('list for %s not found on author page - creating' % series_url)
-        q = pq(initial_text)
-        ul = q('ul')
+        q = init_section(q)
+        ul = find_series_list(q, series_url)
+
+        if not ul: raise UnableToInitSectionError("Unable to Init section %s" % series_url)
 
     if find_link(ul, post.permalink):
         log.error('link already in %s section' % series_url)
@@ -130,21 +136,33 @@ def format_for_edit(post, wiki_page_name, series_url, initial_text):
 
     return q
 
+def init_one_shots_page(html):
+    def dummy(q=None):
+        if not q: return pq(html)
+        else:
+            q('div.wiki.md').prepend(html)
+            return q
+
+    return dummy
+
+def init_one_shots_section(html):
+    return init_one_shots_page(html)
+
 def test(post):
     authors_wiki = 'authors/%s' % (post.author.name)
     series_url = '/r/%s/wiki/authors/%s/one-shots' % (account.subname, post.author.name)
-    initial_text = '<h2><a href="%s">One Shots</a></h2><ul/>' % series_url
+    init = init_one_shots_page('<h2><a href="%s">One Shots</a></h2><ul/>' % series_url)
 
 
-    q = format_for_edit(post, authors_wiki, series_url, initial_text)
+    q = format_for_edit(post, authors_wiki, series_url, init)
     if q is not None and q.html() is not None:
         account.edit_wiki_page(account.subname, 'authors/%s' % post.author.name, html2md.handle(q.html()))
 
     authors_wiki = 'authors/%s/one-shots' % (post.author.name)
     series_url = '/r/%s/wiki/authors/%s' % (account.subname, post.author.name)
-    initial_text = '<h2>One Shots - by: <a href="%s">%s</a></h2><ul/>' % (series_url, post.author.name)
+    init = init_one_shots_section('<h2>One Shots - by: <a href="%s">%s</a></h2><ul/>' % (series_url, post.author.name))
 
-    q = format_for_edit(post, authors_wiki, series_url, initial_text)
+    q = format_for_edit(post, authors_wiki, series_url, init)
     if q is not None and q.html() is not None:
         account.edit_wiki_page(account.subname, 'authors/%s/one-shots' % post.author.name, html2md.handle(q.html()))
 

@@ -56,6 +56,9 @@ def find_link(ul, link):
 def sanitize_title(title):
     return re.sub(re_title, '', title)
 
+def sanitize_series_name(name):
+    return re.sub('[^0-9a-zA-Z]+', '*', name)
+
 #TODO: allow to format entries (i'm looking at you someguynamedted)
 def format_series_link(name, link):
     return '<p><a href="%s" rel="nofollow">%s</a></p>'% (link, sanitize_title(name))
@@ -91,16 +94,6 @@ def find_series_list(q, series_url):
 
     return ul
 
-def add_series_section(q):
-    if not q('#wiki_series'):
-        log.debug('appending Series section')
-        series = q(':header a[href*="/wiki/series/"]') 
-
-        if series:
-            series.prepend('<h2>Series</h2>')
-        else:
-            q.append('<h2>Series</h2>')
-
 def format_for_edit(post, wiki_page_name, series_url, init_section):
     try:
         wiki = account.get_wiki_page(account.subname, wiki_page_name)
@@ -116,12 +109,9 @@ def format_for_edit(post, wiki_page_name, series_url, init_section):
 
     ul = find_series_list(q, series_url)
 
-    import ipdb
-    ipdb.set_trace()
     if not ul: #page exists but no link to series found in <h> element
         log.debug('list for %s not found on author page - creating' % series_url)
-        q = init_section(q)
-        ul = find_series_list(q, series_url)
+        ul = init_section(q)
 
         if not ul: raise UnableToInitSectionError("Unable to Init section %s" % series_url)
 
@@ -136,23 +126,39 @@ def format_for_edit(post, wiki_page_name, series_url, init_section):
 
     return q
 
-def init_one_shots_page(html):
+def init_section_page(html):
     def dummy(q=None):
-        if not q: return pq(html)
+        if not q: 
+            return pq(html)
         else:
-            q('div.wiki.md').prepend(html)
-            return q
+            section = pq(html)
+            q('div.wiki.md').prepend(section)
+            return section('ul:first')
 
     return dummy
 
-def init_one_shots_section(html):
+def init_author_one_shots(html):
     return init_one_shots_page(html)
 
-def test(post):
+def init_author_series(html):
+    def dummy(q=None):
+        if not q: 
+            return pq(html)
+        else:
+            if not q('#wiki_series'):
+                log.debug('appending Series section')
+                series = q(':header a[href*="/wiki/series/"]') 
+
+                if series:
+                    series.prepend('<h2>Series</h2>')
+                else:
+                    q.append('<h2>Series</h2>')
+    return dummy
+
+def add_one_shot(post):
     authors_wiki = 'authors/%s' % (post.author.name)
     series_url = '/r/%s/wiki/authors/%s/one-shots' % (account.subname, post.author.name)
-    init = init_one_shots_page('<h2><a href="%s">One Shots</a></h2><ul/>' % series_url)
-
+    init = init_section_page('<h2><a href="%s">One Shots</a></h2><ul/>' % series_url)
 
     q = format_for_edit(post, authors_wiki, series_url, init)
     if q is not None and q.html() is not None:
@@ -160,17 +166,17 @@ def test(post):
 
     authors_wiki = 'authors/%s/one-shots' % (post.author.name)
     series_url = '/r/%s/wiki/authors/%s' % (account.subname, post.author.name)
-    init = init_one_shots_section('<h2>One Shots - by: <a href="%s">%s</a></h2><ul/>' % (series_url, post.author.name))
+    init = init_author_one_shots('<h2>One Shots - by: <a href="%s">%s</a></h2><ul/>' % (series_url, post.author.name))
 
     q = format_for_edit(post, authors_wiki, series_url, init)
     if q is not None and q.html() is not None:
         account.edit_wiki_page(account.subname, 'authors/%s/one-shots' % post.author.name, html2md.handle(q.html()))
 
-def get_wiki_page(sub, page):
+def update_series(post, name):
+    section = '/r/%s/wiki/series/%s' % (account.subname, sanitize_series_name(name))
     try:
-        return account.get_wiki_page(sub, page)
-    except:
-        log.exception('error getting wiki page %s' % page)
+        
+
 
 def check_submissions():
     while True:

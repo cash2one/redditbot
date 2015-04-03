@@ -126,7 +126,7 @@ def format_for_edit(post, wiki_page_name, series_url, init_section):
 
     return q
 
-def init_one_shots_section(html):
+def init_section(html):
     def dummy(q=None):
         if not q: 
             #TODO: pq(html)('ul:first')
@@ -147,12 +147,12 @@ def init_one_shots_section(html):
 def add_one_shot(post):
     wiki_page_name = 'authors/%s' % (post.author.name)
     series_url = '/r/%s/wiki/authors/%s/one-shots' % (account.subname, post.author.name)
-    init = init_one_shots_section('<h2><a href="%s">One Shots</a></h2><ul/>' % series_url)
+    init = init_section('<h2><a href="%s">One Shots</a></h2><ul/>' % series_url)
     save_wiki_page(post, wiki_page_name, series_url, init)
 
     wiki_page_name = 'authors/%s/one-shots' % (post.author.name)
     series_url = '/r/%s/wiki/authors/%s' % (account.subname, post.author.name)
-    init = init_one_shots_section('<h2>One Shots - by: <a href="%s">%s</a></h2><ul/>' % (series_url, post.author.name))
+    init = init_section('<h2>One Shots - by: <a href="%s">%s</a></h2><ul/>' % (series_url, post.author.name))
     save_wiki_page(post, wiki_page_name, series_url, init)
 
 def init_series_section(html, name, series_url):
@@ -187,9 +187,10 @@ def update_series(post, name, series_url):
     init = init_series_section('<h4><a href="%s">%s</a></h4><ul/>' % (series_url, name), name, series_url)
     save_wiki_page(post, wiki_page_name, series_url, init)
 
+    authors_wiki_link = '/r/%s/wiki/authors/%s' % (account.subname, post.author.name)
     wiki_page_name = 'series/%s' % (sanitize_series_name(name))
     series_url = '/r/%s/wiki/series/%s' % (account.subname, sanitize_series_name(name))
-    init = init_series_section('<h4>%s - by: <a href="%s">%s</a></h4><ul/>' % (name, series_url, post.author.name), name, series_url)
+    init = init_section('<h2>%s - by: <a href="%s">%s</a></h2><ul/>' % (name, authors_wiki_link, post.author.name))
     save_wiki_page(post, wiki_page_name, series_url, init)
 
 

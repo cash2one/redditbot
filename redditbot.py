@@ -268,9 +268,6 @@ class TagBot:
             msg.reply("I'm sorry i can't seem to get submission from url: %s\n\nYou will have to try again :(\n\n(Error: %s)" % (msg.subject, e.message))
             msg.mark_as_read()
 
-    def process_submission(self, sub):
-        log.debug("processing submission %s" % sub.permalink)
-
     def check_comments(self):
         log.debug('checking comments')
 
@@ -362,16 +359,6 @@ class TagBot:
         locked = self.get_wiki_page('locked')
         self.locked = re.findall(re_locked, locked.content_md)
 
-
-    def update_volunteers(self):
-        volunteers = []
-        for resp in account.get_redditor(os.environ['REDDIT_USER']).get_comments(limit=1000):
-            pass
-
-        for msg in account.get_inbox(limit=1000):
-            pass
-
-
     def update_global_tags(self):
         tags = self.get_accepted_tags()
         story_tags = {}
@@ -434,9 +421,3 @@ def main():
 
 if __name__ == '__main__':
     main()        
-
-# a.parents(':header').nextAll('ul')[0]
-# d(a.parents(':header').nextAll('ul')[0]).append('<li>test</li>')
-#import HTMLParser
-#h = HTMLParser.HTMLParser()
-#print h.unescape('&pound;682m')

@@ -138,8 +138,8 @@ def init_section_page(html):
     return dummy
 
 def init_author_one_shots(html):
-    return init_one_shots_page(html)
-
+	return init_section_page(html)
+			
 def init_author_series(html):
     def dummy(q=None):
         if not q: 
@@ -174,15 +174,12 @@ def add_one_shot(post):
 
 def update_series(post, name):
     section = '/r/%s/wiki/series/%s' % (account.subname, sanitize_series_name(name))
-    try:
-        
 
 
 def check_submissions():
     while True:
-        sleep(30)
         log.debug('waking up!')
-        new = account.get_subreddit(account.subname).get_new(limit=1)
+        new = account.get_subreddit(account.subname).get_new(limit=2)
 
         for submission in new:
             try:
@@ -196,7 +193,6 @@ def check_submissions():
                 log.exception('Error processing %s' % submission.permalink)
 
         log.debug('going to sleep...')
-
 
 sub = account.get_submission('http://www.reddit.com/r/HFYBeta/comments/2z7qy5/octhe_history_of_humans_1011/')
 sub1= account.get_submission('http://www.reddit.com/r/HFYBeta/comments/2yk6ef/test/')

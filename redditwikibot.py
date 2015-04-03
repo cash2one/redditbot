@@ -155,7 +155,7 @@ def add_one_shot(post):
     init = init_one_shots_section('<h2>One Shots - by: <a href="%s">%s</a></h2><ul/>' % (series_url, post.author.name))
     save_wiki_page(post, wiki_page_name, series_url, init)
 
-def init_series_section(html, name):
+def init_series_section(html, name, series_url):
     def dummy(q=None):
         if not q: 
             log.debug('creating new page')
@@ -173,6 +173,7 @@ def init_series_section(html, name):
 
         ul = find_series_list(q, series_url)
         if not ul:
+            section = q('#wiki_series') # it must exist at this point
             ul = pq(html)
             section.after(ul)
             
@@ -180,15 +181,15 @@ def init_series_section(html, name):
 
     return dummy
 
-def update_series(post, name):
+def update_series(post, name, series_url):
     wiki_page_name = 'authors/%s' % (post.author.name)
     series_url = '/r/%s/wiki/series/%s' % (account.subname, sanitize_series_name(name))
-    init = init_series_section('<h4><a href="%s">%s</a></h4><ul/>' % (series_url, name), name)
+    init = init_series_section('<h4><a href="%s">%s</a></h4><ul/>' % (series_url, name), name, series_url)
     save_wiki_page(post, wiki_page_name, series_url, init)
 
     wiki_page_name = 'series/%s' % (sanitize_series_name(name))
     series_url = '/r/%s/wiki/series/%s' % (account.subname, sanitize_series_name(name))
-    init = init_series_section('<h4>%s - by: <a href="%s">%s</a></h4><ul/>' % (name, series_url, post.author.name), name)
+    init = init_series_section('<h4>%s - by: <a href="%s">%s</a></h4><ul/>' % (name, series_url, post.author.name), name, series_url)
     save_wiki_page(post, wiki_page_name, series_url, init)
 
 

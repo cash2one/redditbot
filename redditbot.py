@@ -36,7 +36,7 @@ class DummyAuthor:
 
 # expected format is: "* [title](link) - by: [author](link-to-authors-wiki)"
 class SortableLine:
-    def __init__(self, line=None):
+    def __init__(self, line):
         self.title_md = re_title.sub('', line).strip() + '\n\n'
 
         try:

@@ -132,14 +132,16 @@ def init_section_page(html):
             return pq(html)
         else:
             section = pq(html)
-            q('div.wiki.md').prepend(section)
+            first_header = q('div.wiki.md :header:first')
+            if first_header:
+                first_header.before(section)
+            else:
+                q('div.wiki.md').prepend(section)
+
             return section('ul:first')
 
     return dummy
-
-def init_author_one_shots(html):
-	return init_section_page(html)
-			
+            
 def init_author_series(html):
     def dummy(q=None):
         if not q: 
@@ -166,7 +168,7 @@ def add_one_shot(post):
 
     authors_wiki = 'authors/%s/one-shots' % (post.author.name)
     series_url = '/r/%s/wiki/authors/%s' % (account.subname, post.author.name)
-    init = init_author_one_shots('<h2>One Shots - by: <a href="%s">%s</a></h2><ul/>' % (series_url, post.author.name))
+    init = init_section_page('<h2>One Shots - by: <a href="%s">%s</a></h2><ul/>' % (series_url, post.author.name))
 
     q = format_for_edit(post, authors_wiki, series_url, init)
     if q is not None and q.html() is not None:

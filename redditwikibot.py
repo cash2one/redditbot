@@ -158,21 +158,22 @@ def init_author_series(html):
     return dummy
 
 def add_one_shot(post):
-    authors_wiki = 'authors/%s' % (post.author.name)
+    wiki_page_name = 'authors/%s' % (post.author.name)
     series_url = '/r/%s/wiki/authors/%s/one-shots' % (account.subname, post.author.name)
     init = init_section_page('<h2><a href="%s">One Shots</a></h2><ul/>' % series_url)
+    save_wiki_page(post, wiki_page_name, series_url, init)
 
-    q = format_for_edit(post, authors_wiki, series_url, init)
-    if q is not None and q.html() is not None:
-        account.edit_wiki_page(account.subname, 'authors/%s' % post.author.name, html2md.handle(q.html()))
 
-    authors_wiki = 'authors/%s/one-shots' % (post.author.name)
+    wiki_page_name = 'authors/%s/one-shots' % (post.author.name)
     series_url = '/r/%s/wiki/authors/%s' % (account.subname, post.author.name)
     init = init_section_page('<h2>One Shots - by: <a href="%s">%s</a></h2><ul/>' % (series_url, post.author.name))
+    save_wiki_page(post, wiki_page_name, series_url, init)
 
-    q = format_for_edit(post, authors_wiki, series_url, init)
+
+def save_wiki_page(post, wiki_page_name, series_url, init):
+    q = format_for_edit(post, wiki_page_name, series_url, init)
     if q is not None and q.html() is not None:
-        account.edit_wiki_page(account.subname, 'authors/%s/one-shots' % post.author.name, html2md.handle(q.html()))
+        account.edit_wiki_page(account.subname, wiki_page_name, html2md.handle(q.html()))
 
 def update_series(post, name):
     section = '/r/%s/wiki/series/%s' % (account.subname, sanitize_series_name(name))

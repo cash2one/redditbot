@@ -21,7 +21,6 @@ re_name = re.compile('\[(.*)\]')
 re_title = re.compile('(\[|\()(oc|pi|jenkinsverse|j-verse|jverse|misc|nsfw)(\]|\))', re.IGNORECASE)
 re_command = re.compile('\[(tags|lock)\]', re.IGNORECASE)
 re_perm = re.compile('\((http[^)]*)\)')
-re_body = re.compile('\[([^]]*)\]')
 
 
 class UnableToEditWikiError(Exception): pass
@@ -38,8 +37,6 @@ class DummyAuthor:
 # expected format is: "* [title](link) - by: [author](link-to-authors-wiki)"
 class SortableLine:
     def __init__(self, line=None):
-        if not line: return
-
         self.title_md = re_title.sub('', line).strip() + '\n\n'
 
         try:
@@ -54,11 +51,6 @@ class SortableLine:
             log.exception('Incorrect format!')
             self.sortby = line.lower()
             self.name = line
-
-    def params(self, title_md, name, permalink):
-        self.title_md = title_md
-        self.name = name
-        self.parmalink = permalink
 
     def __eq__(self, other):
         return self.permalink == other.permalink
@@ -226,7 +218,7 @@ class TagBot:
             if self.wiki_modification_time[tag] < page.revision_date: break
             sleep(2)
         else:
-            raise UnableToEditWikiError()
+            raise UnableToEditWikiError('Unable to confirm wiki edit. sorry :(')
 
 
     def get_comments(self, limit=1000):
@@ -243,12 +235,6 @@ class TagBot:
 
     def get_last_seen(self):
         return self.account().get_wiki_page(self.subreddit, 'tags/last_seen')
-
-    def get_last_seen_submission(self):
-        return self.account().get_wiki_page(self.subreddit, 'last_seen_submission')
-
-    def save_last_seen_submission(self):
-        return self.account().edit_wiki_page(self.subreddit, 'last_seen_submission', self.last_seen_submission)
 
     def send_message(self, recipient, subject, message):
         try:
@@ -282,28 +268,6 @@ class TagBot:
             msg.reply("I'm sorry i can't seem to get submission from url: %s\n\nYou will have to try again :(\n\n(Error: %s)" % (msg.subject, e.message))
             msg.mark_as_read()
 
-    def check_submissions(self):
-        self.last_seen_submission = float(self.get_last_seen_submission().content_md)
-        self.new_last_seen_submission = self.last_seen_submission
-
-        log.debug('checking submissions')
-
-        for s in self.account().get_subreddit(self.subreddit).get_new(limit=10):
-            try:
-                if s.created <= self.last_seen_submission:
-                    break
-
-                self.process_submission(s)
-            except Exception, e:
-                #message codex_keeper?
-                log.exception("Error processing a submission")
-            finally:
-                if s.created > self.new_last_seen_submission:
-                    self.new_last_seen_submission = s.created
-
-        self.last_seen_submission = self.new_last_seen_submission
-        self.save_last_seen_submission()
-
     def process_submission(self, sub):
         log.debug("processing submission %s" % sub.permalink)
 
@@ -329,7 +293,7 @@ class TagBot:
                 if tag_comment.created > self.new_last_seen:
                     self.new_last_seen = tag_comment.created
      
-	    self.last_seen = self.new_last_seen
+        self.last_seen = self.new_last_seen
             
 
     def check_messages(self):
@@ -463,8 +427,7 @@ def main():
     tagbot = TagBot(os.environ['REDDIT_SUBR'])
     while True:
         try:
-           #tagbot.run()
-           tagbot.check_submissions()
+           tagbot.run()
         except Exception, e:
             log.exception(e)
             sleep(140)

@@ -5,7 +5,6 @@ import re
 import logging as log
 from HTMLParser import HTMLParser
 from time import sleep
-from itertools import groupby
 
 
 #TODO:
@@ -48,7 +47,6 @@ class SortableLine:
             self.permalink= self.permalink[0]
 
             self.sortby = self.name.lower()
-            self.groupby = self.permalink
         except Exception, e:
             log.exception('Incorrect format!')
             self.sortby = line.lower()
@@ -223,7 +221,7 @@ class TagBot:
             raise UnableToEditWikiError('Unable to confirm wiki edit. sorry :(')
 
 
-    def get_comments(self, limit=5000):
+    def get_comments(self, limit=1000):
         return self.account().get_comments(self.subreddit, limit=limit)
 
     def get_wiki_page(self, tag):
@@ -291,8 +289,8 @@ class TagBot:
             finally:
                 if tag_comment.created > self.new_last_seen:
                     self.new_last_seen = tag_comment.created
-
-	self.last_seen = self.new_last_seen
+     
+        self.last_seen = self.new_last_seen
             
 
     def check_messages(self):
@@ -302,6 +300,8 @@ class TagBot:
 
         for msg in messages:
             try:
+                if msg.was_comment: continue
+
                 if msg.subject == 'reload':
                     self.reload_config(msg)
 
@@ -414,7 +414,7 @@ def main():
     tagbot = TagBot(os.environ['REDDIT_SUBR'])
     while True:
         try:
-            tagbot.run()
+           tagbot.run()
         except Exception, e:
             log.exception(e)
             sleep(140)

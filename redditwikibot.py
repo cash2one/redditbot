@@ -196,17 +196,22 @@ def update_series(post, name, series_url):
 def save_wiki_page(post, wiki_page_name, series_url, init, remove=False):
     q = format_for_edit(post, wiki_page_name, series_url, init)
     if remove:
-        remove_one_shot(q, post, series_url)
+        remove_one_shot(q, post)
         
     if q is not None and q.html() is not None:
         account.edit_wiki_page(account.subname, wiki_page_name, html2md.handle(q.html()))
 
-def remove_one_shot(q, post, link):
+def remove_one_shot(q, post):
     try:
-        ul = find_series_list(q, link)
+        ul = find_series_list(q, '/r/%s/wiki/authors/%s/one-shots' % (account.subname, post.author.name))
+        if not ul:
+            ul = find_series_list(q, '/r/%s/wiki/authors/%s' % (account.subname, post.author.name))
+
         find_link(ul, post.permalink).parents('li:first').remove()
+        log.debug('removed %s from one shots' % post.permalink)
     except:
-        pass #TODO: some error message migt be in order but neither of those elements *has* to exist
+        log.warning('Unable to remove %s from one shots' % post.permalink)
+        #TODO: some error message migt be in order but neither of those elements *has* to exist
 
 
 def check_submissions():
@@ -229,5 +234,6 @@ def check_submissions():
 
 sub = account.get_submission('http://www.reddit.com/r/HFYBeta/comments/2z7qy5/octhe_history_of_humans_1011/')
 sub1= account.get_submission('http://www.reddit.com/r/HFYBeta/comments/2yk6ef/test/')
+sub2= account.get_submission('http://www.reddit.com/r/HFYBeta/comments/2ygn5q/ocjenkinsverse_salvage_chapter_78_going_commando/')
 q = account.get_wiki_page('hfybeta', 'authors/other-guy')
 q = pq(unescape_tags(q.content_html))

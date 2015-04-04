@@ -268,9 +268,6 @@ class TagBot:
             msg.reply("I'm sorry i can't seem to get submission from url: %s\n\nYou will have to try again :(\n\n(Error: %s)" % (msg.subject, e.message))
             msg.mark_as_read()
 
-    def process_submission(self, sub):
-        log.debug("processing submission %s" % sub.permalink)
-
     def check_comments(self):
         log.debug('checking comments')
 

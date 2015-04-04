@@ -192,25 +192,38 @@ def update_series(post, name, series_url):
     init = init_section('<h2>%s - by: <a href="%s">%s</a></h2><ul/>' % (name, authors_wiki_link, post.author.name))
     save_wiki_page(post, wiki_page_name, authors_wiki_link, init)
 
+    remove_one_shot(post)
 
 def save_wiki_page(post, wiki_page_name, series_url, init, remove=False):
     q = format_for_edit(post, wiki_page_name, series_url, init)
     if remove:
-        remove_one_shot(q, post)
+        remove_from_one_shots(q, post)
         
     if q is not None and q.html() is not None:
         account.edit_wiki_page(account.subname, wiki_page_name, html2md.handle(q.html()))
 
-def remove_one_shot(q, post):
+# remove from one shot section
+def remove_from_one_shots(q, post):
     try:
         ul = find_series_list(q, '/r/%s/wiki/authors/%s/one-shots' % (account.subname, post.author.name))
-        if not ul:
-            ul = find_series_list(q, '/r/%s/wiki/authors/%s' % (account.subname, post.author.name))
-
         find_link(ul, post.permalink).parents('li:first').remove()
-        log.debug('removed %s from one shots' % post.permalink)
+        log.debug('removed %s from one shots section' % post.permalink)
     except:
-        log.warning('Unable to remove %s from one shots' % post.permalink)
+        log.warning('Unable to remove %s from one shots section' % post.permalink)
+        #TODO: some error message migt be in order but neither of those elements *has* to exist
+
+# remove from one shots page
+def remove_one_shot(post):
+    try:
+        p = account.get_wiki_page(account.subname, 'authors/%s/one-shots' % post.author.name)
+        q = pq(unescape_tags(p.content_html))
+        ul = find_series_list(q, '/r/%s/wiki/authors/%s' % (account.subname, post.author.name))
+        find_link(ul, post.permalink).parents('li:first').remove()
+        account.edit_wiki_page(account.subname, 'authors/%s/one-shots'% post.author.name, html2md.handle(q.html()))
+
+        log.debug('removed %s from one shots page' % post.permalink)
+    except:
+        log.warning('Unable to remove %s from one shots page' % post.permalink)
         #TODO: some error message migt be in order but neither of those elements *has* to exist
 
 

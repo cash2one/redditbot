@@ -189,9 +189,9 @@ def update_series(post, name, series_url):
 
     authors_wiki_link = '/r/%s/wiki/authors/%s' % (account.subname, post.author.name)
     wiki_page_name = 'series/%s' % (sanitize_series_name(name))
-    series_url = '/r/%s/wiki/series/%s' % (account.subname, sanitize_series_name(name))
+    #series_url = '/r/%s/wiki/series/%s' % (account.subname, sanitize_series_name(name))
     init = init_section('<h2>%s - by: <a href="%s">%s</a></h2><ul/>' % (name, authors_wiki_link, post.author.name))
-    save_wiki_page(post, wiki_page_name, series_url, init)
+    save_wiki_page(post, wiki_page_name, authors_wiki_link, init)
 
 
 def save_wiki_page(post, wiki_page_name, series_url, init):

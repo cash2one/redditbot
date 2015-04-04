@@ -219,6 +219,8 @@ def remove_one_shot(post):
         q = pq(unescape_tags(p.content_html))
         ul = find_series_list(q, '/r/%s/wiki/authors/%s' % (account.subname, post.author.name))
         find_link(ul, post.permalink).parents('li:first').remove()
+        q('.toc').remove()
+        q('ul li:empty').remove()
         account.edit_wiki_page(account.subname, 'authors/%s/one-shots'% post.author.name, html2md.handle(q.html()))
 
         log.debug('removed %s from one shots page' % post.permalink)

@@ -185,19 +185,29 @@ def update_series(post, name, series_url):
     wiki_page_name = 'authors/%s' % (post.author.name)
     series_url = '/r/%s/wiki/series/%s' % (account.subname, sanitize_series_name(name))
     init = init_series_section('<h4><a href="%s">%s</a></h4><ul/>' % (series_url, name), name, series_url)
-    save_wiki_page(post, wiki_page_name, series_url, init)
+    save_wiki_page(post, wiki_page_name, series_url, init, True)
 
-    authors_wiki_link = '/r/%s/wiki/authors/%s' % (account.subname, post.author.name)
     wiki_page_name = 'series/%s' % (sanitize_series_name(name))
-    #series_url = '/r/%s/wiki/series/%s' % (account.subname, sanitize_series_name(name))
+    authors_wiki_link = '/r/%s/wiki/authors/%s' % (account.subname, post.author.name)
     init = init_section('<h2>%s - by: <a href="%s">%s</a></h2><ul/>' % (name, authors_wiki_link, post.author.name))
     save_wiki_page(post, wiki_page_name, authors_wiki_link, init)
 
 
-def save_wiki_page(post, wiki_page_name, series_url, init):
+def save_wiki_page(post, wiki_page_name, series_url, init, remove=False):
     q = format_for_edit(post, wiki_page_name, series_url, init)
+    if remove:
+        remove_one_shot(q, post, series_url)
+        
     if q is not None and q.html() is not None:
         account.edit_wiki_page(account.subname, wiki_page_name, html2md.handle(q.html()))
+
+def remove_one_shot(q, post, link):
+    try:
+        ul = find_series_list(q, link)
+        find_link(ul, post.permalink).parents('li:first').remove()
+    except:
+        pass #TODO: some error message migt be in order but neither of those elements *has* to exist
+
 
 def check_submissions():
     while True:
@@ -219,3 +229,5 @@ def check_submissions():
 
 sub = account.get_submission('http://www.reddit.com/r/HFYBeta/comments/2z7qy5/octhe_history_of_humans_1011/')
 sub1= account.get_submission('http://www.reddit.com/r/HFYBeta/comments/2yk6ef/test/')
+q = account.get_wiki_page('hfybeta', 'authors/other-guy')
+q = pq(unescape_tags(q.content_html))

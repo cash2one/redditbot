@@ -53,6 +53,18 @@ def find_link(ul, link):
 
         if href == link: return pq(a)
 
+def reddit_link(link):
+    link.lower()
+    
+    i = link.index('/r/'+account.subname.lower())
+
+    if not i: return False
+
+    if link[-1] == '/': link = link[:-1]
+
+    return link[i:]
+
+
 def sanitize_title(title):
     return re.sub(re_title, '', title)
 
@@ -172,10 +184,14 @@ def init_series_section(name, series_url):
 
     return dummy
 
-def update_series(post, name, series_url=None):
+def update_series(post, name):
     wiki_page_name = 'authors/%s' % (post.author.name)
 
-    if not series_url :series_url = '/r/%s/wiki/series/%s' % (account.subname, sanitize_series_name(name))
+    if name.startswith('http://'):
+        series_url = name
+        name = name.split('/')[-1].replace('_', ' ').title()
+    else:
+        series_url = series_url = '/r/%s/wiki/series/%s' % (account.subname, sanitize_series_name(name))
 
     init = init_series_section(name, series_url)
     save_wiki_page(post, wiki_page_name, series_url, init, True)

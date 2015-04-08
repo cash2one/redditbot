@@ -155,8 +155,16 @@ def add_one_shot(post):
     init = init_section('<h2>One Shots - by: <a href="%s">%s</a></h2><ul/>' % (series_url, post.author.name))
     save_wiki_page(post, wiki_page_name, series_url, init)
 
-def init_series_section(html, name, series_url):
+def init_series_section(name, series_url):
     def dummy(q=None):
+        series = q(':header a[href*="/wiki/series/"]') 
+        if not series:
+            h = 'h4'
+        else:
+            h = series.parents(':header:first')[0].tag
+
+        html = '<%s><a href="%s">%s</a></%s><ul/>' % (h, series_url, name, h)
+
         if not q: 
             log.debug('creating new page')
             q = pq('<h2 id="wiki_series">Series</h2>\n\n%s' % (html))
@@ -164,16 +172,19 @@ def init_series_section(html, name, series_url):
         else:
             if not q('#wiki_series'):
                 log.debug('appending Series section')
-                series = q(':header a[href*="/wiki/series/"]') 
-
-                if series:
-                    series.before('<h2 id="wiki_series">Series</h2>')
-                else:
+                if not series:
                     q.append('<h2 id="wiki_series">Series</h2>')
+                else:
+                    pass
 
         ul = find_series_list(q, series_url)
+
         if not ul:
-            section = q('#wiki_series') # it must exist at this point
+            if not series:
+                section = q('#wiki_series') # it must exist at this point
+            else:
+                section = series
+
             ul = pq(html)
             section.after(ul)
             
@@ -184,7 +195,7 @@ def init_series_section(html, name, series_url):
 def update_series(post, name, series_url):
     wiki_page_name = 'authors/%s' % (post.author.name)
     series_url = '/r/%s/wiki/series/%s' % (account.subname, sanitize_series_name(name))
-    init = init_series_section('<h4><a href="%s">%s</a></h4><ul/>' % (series_url, name), name, series_url)
+    init = init_series_section(name, series_url)
     save_wiki_page(post, wiki_page_name, series_url, init, True)
 
     wiki_page_name = 'series/%s' % (sanitize_series_name(name))

@@ -14,3 +14,4 @@ http://www.reddit.com/r/HFY/wiki/authors/meatfcker
 
 
 
+$('li').has('span.num:contains(0)').addClass('disabled')

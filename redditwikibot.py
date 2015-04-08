@@ -6,6 +6,8 @@ from pyquery import PyQuery as pq
 from HTMLParser import HTMLParser
 from time import sleep
 from requests.exceptions import HTTPError
+from timeit import default_timer as timer
+
 
 log.basicConfig(level=log.DEBUG)
 
@@ -246,6 +248,8 @@ def clean_dom(q):
 
 def query_wiki_page(page_name):
     try:
+        while is_cached('/r/%s/wiki/%s' % (account.subname, page_name)): sleep(10)
+
         w = account.get_wiki_page(account.subname, page_name)
         return to_pq(w)
     except HTTPError, e:
@@ -260,6 +264,18 @@ def edit_wiki_page(page_name, q):
     clean_dom(q)
     return account.edit_wiki_page(account.subname, page_name, html2md.handle(q.html()))
 
+def clear_cache():
+    cls = praw.DefaultHandler
+    for key in list(cls.timeouts):
+        if timer() - cls.timeouts[key] > 30:
+            del cls.timeouts[key]
+            del cls.cache[key]
+
+def is_cached(url):
+    if url[-1] == '/': url = url[:-1]
+
+    clear_cache()
+    return filter(lambda x: x[0].endswith(url), praw.DefaultHandler.timeouts.keys())
 
 def check_submissions():
     while True:

@@ -57,7 +57,7 @@ def sanitize_title(title):
     return re.sub(re_title, '', title)
 
 def sanitize_series_name(name):
-    return re.sub('[^0-9a-zA-Z]+', '*', name)
+    return re.sub('[^0-9a-zA-Z]+', '_', name)
 
 #TODO: allow to format entries (i'm looking at you someguynamedted)
 def format_series_link(name, link):
@@ -95,17 +95,9 @@ def find_series_list(q, series_url):
     return ul
 
 def format_for_edit(post, wiki_page_name, series_url, init_section):
-    try:
-        wiki = account.get_wiki_page(account.subname, wiki_page_name)
-        q = pq(unescape_tags(wiki.content_html))
-    except HTTPError, e:
-        if e.message.startswith('404'): # page does not exist
-            log.debug('%s wiki page does not exist - creating' % wiki_page_name)
-            q = init_section()
-        else:
-            raise
-    except Exception, e:
-        raise
+    q = query_wiki_page(wiki_page_name)
+    if not q:
+        q = init_section()
 
     ul = find_series_list(q, series_url)
 
@@ -120,10 +112,6 @@ def format_for_edit(post, wiki_page_name, series_url, init_section):
         return
 
     ul.append('<li><a href="%s">%s</a></li>' % (post.permalink, sanitize_title(post.title)))
-
-    q('.toc').remove()
-    q('ul li:empty').remove()
-
     return q
 
 def init_section(html):
@@ -157,44 +145,38 @@ def add_one_shot(post):
 
 def init_series_section(name, series_url):
     def dummy(q=None):
-        series = q(':header a[href*="/wiki/series/"]') 
-        if not series:
-            h = 'h4'
-        else:
-            h = series.parents(':header:first')[0].tag
-
-        html = '<%s><a href="%s">%s</a></%s><ul/>' % (h, series_url, name, h)
+        html = '<h4><a href="%s">%s</a></h4><ul/>' % (series_url, name)
 
         if not q: 
             log.debug('creating new page')
             q = pq('<h2 id="wiki_series">Series</h2>\n\n%s' % (html))
             return q('ul')
-        else:
-            if not q('#wiki_series'):
-                log.debug('appending Series section')
-                if not series:
-                    q.append('<h2 id="wiki_series">Series</h2>')
-                else:
-                    pass
 
+        section = q('#wiki_series')
+        series = q(':header a[href*="/wiki/series/"]') 
         ul = find_series_list(q, series_url)
 
-        if not ul:
-            if not series:
-                section = q('#wiki_series') # it must exist at this point
-            else:
-                section = series
+        if series: 
+            log.debug('found existing series adding a new one')
+            h = series.parents(':header:first')[0].tag
+            html = html.replace('h4', h)
+            header = pq(html)
+            series.parents(':header').before(header)
+        else:
+            log.debug('creating series section')
+            q.append('<h2 id="wiki_series">Series</h2>')
+            header = pq(html)
+            q.append(header)
 
-            ul = pq(html)
-            section.after(ul)
-            
-        return ul
+        return header('ul')
 
     return dummy
 
-def update_series(post, name, series_url):
+def update_series(post, name, series_url=None):
     wiki_page_name = 'authors/%s' % (post.author.name)
-    series_url = '/r/%s/wiki/series/%s' % (account.subname, sanitize_series_name(name))
+
+    if not series_url :series_url = '/r/%s/wiki/series/%s' % (account.subname, sanitize_series_name(name))
+
     init = init_series_section(name, series_url)
     save_wiki_page(post, wiki_page_name, series_url, init, True)
 
@@ -211,7 +193,7 @@ def save_wiki_page(post, wiki_page_name, series_url, init, remove=False):
         remove_from_one_shots(q, post)
         
     if q is not None and q.html() is not None:
-        account.edit_wiki_page(account.subname, wiki_page_name, html2md.handle(q.html()))
+        edit_wiki_page(wiki_page_name, q)
 
 # remove from one shot section
 def remove_from_one_shots(q, post):
@@ -226,18 +208,41 @@ def remove_from_one_shots(q, post):
 # remove from one shots page
 def remove_one_shot(post):
     try:
-        p = account.get_wiki_page(account.subname, 'authors/%s/one-shots' % post.author.name)
-        q = pq(unescape_tags(p.content_html))
+        q = query_wiki_page('authors/%s/one-shots' % post.author.name)
+        if not q: return
+
         ul = find_series_list(q, '/r/%s/wiki/authors/%s' % (account.subname, post.author.name))
         find_link(ul, post.permalink).parents('li:first').remove()
-        q('.toc').remove()
-        q('ul li:empty').remove()
-        account.edit_wiki_page(account.subname, 'authors/%s/one-shots'% post.author.name, html2md.handle(q.html()))
+        edit_wiki_page('authors/%s/one-shots'% post.author.name, q)
 
         log.debug('removed %s from one shots page' % post.permalink)
     except:
         log.warning('Unable to remove %s from one shots page' % post.permalink)
         #TODO: some error message migt be in order but neither of those elements *has* to exist
+
+def to_pq(wiki_page):
+    ret = pq(unescape_tags(wiki_page.content_html))
+    return ret
+
+def clean_dom(q):
+    q('.toc').remove()
+    q('ul li:empty').remove()
+
+def query_wiki_page(page_name):
+    try:
+        w = account.get_wiki_page(account.subname, page_name)
+        return to_pq(w)
+    except HTTPError, e:
+        if e.message.startswith('404'): # page does not exist
+            return None
+        else:
+            raise
+    except Exception, e:
+        raise
+
+def edit_wiki_page(page_name, q):
+    clean_dom(q)
+    return account.edit_wiki_page(account.subname, page_name, html2md.handle(q.html()))
 
 
 def check_submissions():
@@ -261,5 +266,4 @@ def check_submissions():
 sub = account.get_submission('http://www.reddit.com/r/HFYBeta/comments/2z7qy5/octhe_history_of_humans_1011/')
 sub1= account.get_submission('http://www.reddit.com/r/HFYBeta/comments/2yk6ef/test/')
 sub2= account.get_submission('http://www.reddit.com/r/HFYBeta/comments/2ygn5q/ocjenkinsverse_salvage_chapter_78_going_commando/')
-q = account.get_wiki_page('hfybeta', 'authors/other-guy')
-q = pq(unescape_tags(q.content_html))
+q = query_wiki_page('authors/other-guy')

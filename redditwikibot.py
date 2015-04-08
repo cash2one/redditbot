@@ -11,6 +11,8 @@ from timeit import default_timer as timer
 
 log.basicConfig(level=log.DEBUG)
 
+re_title = re.compile('(\[|\()(oc|pi|jenkinsverse|j-verse|jverse|misc|nsfw)(\]|\))', re.IGNORECASE)
+
 unescape_tags = HTMLParser().unescape
 html2md = html2text.HTML2Text()
 html2md.body_width = 0
@@ -19,6 +21,8 @@ account = praw.Reddit(user_agent='hfywikibot 0.1 by /u/HFY_wiki_bot')
 account.login('hfy_wiki_bot','dupa.8')
 account.subname = 'hfybeta'
 account.last_author = ''
+account.one_shots = set()
+account.series = set()
 
 re_title = re.compile('(\[|\()(oc|pi|jenkinsverse|j-verse|jverse|misc|nsfw)(\]|\))', re.IGNORECASE)
 
@@ -157,6 +161,7 @@ def add_one_shot(post):
     init = init_section('<h2>One Shots - by: <a href="%s">%s</a></h2><ul/>' % (series_url, post.author.name))
     save_wiki_page(post, wiki_page_name, series_url, init)
 
+
 def init_series_section(name, series_url):
     def dummy(q=None):
         html = '<h4><a href="%s">%s</a></h4><ul/>' % (series_url, name)
@@ -175,6 +180,15 @@ def init_series_section(name, series_url):
             h = series.parents(':header:first')[0].tag
             html = html.replace('h4', h)
             header = pq(html)
+            
+            # add after last header with a link to the story
+            #el = q(':header:last a[href*="/wiki/series/"]').parents(':header:first')
+            #while True:
+                #tmp = el.next()
+                #if not tmp: break
+                #if tmp(':header'): break
+                
+            #el.after(header)
             series.parents(':header').before(header)
         else:
             log.debug('creating series section')
@@ -277,7 +291,27 @@ def is_cached(url):
     clear_cache()
     return filter(lambda x: x[0].endswith(url), praw.DefaultHandler.timeouts.keys())
 
-def check_submissions():
+def add_author(post):
+    q = query_wiki_page('authors')
+    if not q:
+        q = pq('<h2>Authors</h2>')
+
+    letter = post.author.name[0].lower()
+
+    header = q('wiki_'+ letter)
+
+    if not header:
+        header = pq('<h5>%s</h5><ul/>' %s letter)
+        q.append(header)
+
+    ul = header('ul')
+    ul.append('<li><a href="/r/%s/wiki/authors/%s">%s</a></li>' % (account.subname, post.author.name, post.author.name))
+
+    lis = list(header('ul li'))
+    lis.sort(key=lambda x: x.text.strip().lower()) 
+
+    
+def check_submissions_():
     while True:
         log.debug('waking up!')
         new = account.get_subreddit(account.subname).get_new(limit=2)
@@ -295,7 +329,31 @@ def check_submissions():
 
         log.debug('going to sleep...')
 
+def check_submissions():
+    while True:
+        log.debug('waking up!')
+        new = account.get_subreddit(account.subname).get_new(limit=50)
+
+        for submission in new:
+            try:
+                log.debug('checking submission %s', submission.permalink)
+                add_one_shot(submission)
+            except:
+                log.exception('Error processing %s' % submission.permalink)
+
+        log.debug('going to sleep...')
+
+
+def main():
+    while True:
+        try:
+            check_submissions()
+        except:
+            log.exception("Unknown Error")
+
 sub = account.get_submission('http://www.reddit.com/r/HFYBeta/comments/2z7qy5/octhe_history_of_humans_1011/')
 sub1= account.get_submission('http://www.reddit.com/r/HFYBeta/comments/2yk6ef/test/')
 sub2= account.get_submission('http://www.reddit.com/r/HFYBeta/comments/2ygn5q/ocjenkinsverse_salvage_chapter_78_going_commando/')
 q = query_wiki_page('authors/other-guy')
+
+#main()

@@ -300,7 +300,9 @@ class TagBot:
 
         for msg in messages:
             try:
-                if msg.was_comment: continue
+                if msg.was_comment: 
+                    msg.mark_as_read()
+                    continue
 
                 if msg.subject == 'reload':
                     self.reload_config(msg)

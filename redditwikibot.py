@@ -126,63 +126,113 @@ def format_for_edit(post, wiki_page_name, series_url, init_section):
 
     return q
 
-def init_section_page(html):
+def init_section(html):
     def dummy(q=None):
         if not q: 
+            #TODO: pq(html)('ul:first')
+            log.debug('creating new page')
             return pq(html)
         else:
             section = pq(html)
-            q('div.wiki.md').prepend(section)
+            first_header = q('div.wiki.md :header:first')
+            if first_header:
+                first_header.before(section)
+            else:
+                q('div.wiki.md').prepend(section)
+
             return section('ul:first')
 
     return dummy
 
-def init_author_one_shots(html):
-    return init_one_shots_page(html)
+def add_one_shot(post):
+    wiki_page_name = 'authors/%s' % (post.author.name)
+    series_url = '/r/%s/wiki/authors/%s/one-shots' % (account.subname, post.author.name)
+    init = init_section('<h2><a href="%s">One Shots</a></h2><ul/>' % series_url)
+    save_wiki_page(post, wiki_page_name, series_url, init)
 
-def init_author_series(html):
+    wiki_page_name = 'authors/%s/one-shots' % (post.author.name)
+    series_url = '/r/%s/wiki/authors/%s' % (account.subname, post.author.name)
+    init = init_section('<h2>One Shots - by: <a href="%s">%s</a></h2><ul/>' % (series_url, post.author.name))
+    save_wiki_page(post, wiki_page_name, series_url, init)
+
+def init_series_section(html, name, series_url):
     def dummy(q=None):
         if not q: 
-            return pq(html)
+            log.debug('creating new page')
+            q = pq('<h2 id="wiki_series">Series</h2>\n\n%s' % (html))
+            return q('ul')
         else:
             if not q('#wiki_series'):
                 log.debug('appending Series section')
                 series = q(':header a[href*="/wiki/series/"]') 
 
                 if series:
-                    series.prepend('<h2>Series</h2>')
+                    series.before('<h2 id="wiki_series">Series</h2>')
                 else:
-                    q.append('<h2>Series</h2>')
+                    q.append('<h2 id="wiki_series">Series</h2>')
+
+        ul = find_series_list(q, series_url)
+        if not ul:
+            section = q('#wiki_series') # it must exist at this point
+            ul = pq(html)
+            section.after(ul)
+            
+        return ul
+
     return dummy
 
-def add_one_shot(post):
-    authors_wiki = 'authors/%s' % (post.author.name)
-    series_url = '/r/%s/wiki/authors/%s/one-shots' % (account.subname, post.author.name)
-    init = init_section_page('<h2><a href="%s">One Shots</a></h2><ul/>' % series_url)
+def update_series(post, name, series_url):
+    wiki_page_name = 'authors/%s' % (post.author.name)
+    series_url = '/r/%s/wiki/series/%s' % (account.subname, sanitize_series_name(name))
+    init = init_series_section('<h4><a href="%s">%s</a></h4><ul/>' % (series_url, name), name, series_url)
+    save_wiki_page(post, wiki_page_name, series_url, init, True)
 
-    q = format_for_edit(post, authors_wiki, series_url, init)
-    if q is not None and q.html() is not None:
-        account.edit_wiki_page(account.subname, 'authors/%s' % post.author.name, html2md.handle(q.html()))
+    wiki_page_name = 'series/%s' % (sanitize_series_name(name))
+    authors_wiki_link = '/r/%s/wiki/authors/%s' % (account.subname, post.author.name)
+    init = init_section('<h2>%s - by: <a href="%s">%s</a></h2><ul/>' % (name, authors_wiki_link, post.author.name))
+    save_wiki_page(post, wiki_page_name, authors_wiki_link, init)
 
-    authors_wiki = 'authors/%s/one-shots' % (post.author.name)
-    series_url = '/r/%s/wiki/authors/%s' % (account.subname, post.author.name)
-    init = init_author_one_shots('<h2>One Shots - by: <a href="%s">%s</a></h2><ul/>' % (series_url, post.author.name))
+    remove_one_shot(post)
 
-    q = format_for_edit(post, authors_wiki, series_url, init)
-    if q is not None and q.html() is not None:
-        account.edit_wiki_page(account.subname, 'authors/%s/one-shots' % post.author.name, html2md.handle(q.html()))
-
-def update_series(post, name):
-    section = '/r/%s/wiki/series/%s' % (account.subname, sanitize_series_name(name))
-    try:
+def save_wiki_page(post, wiki_page_name, series_url, init, remove=False):
+    q = format_for_edit(post, wiki_page_name, series_url, init)
+    if remove:
+        remove_from_one_shots(q, post)
         
+    if q is not None and q.html() is not None:
+        account.edit_wiki_page(account.subname, wiki_page_name, html2md.handle(q.html()))
+
+# remove from one shot section
+def remove_from_one_shots(q, post):
+    try:
+        ul = find_series_list(q, '/r/%s/wiki/authors/%s/one-shots' % (account.subname, post.author.name))
+        find_link(ul, post.permalink).parents('li:first').remove()
+        log.debug('removed %s from one shots section' % post.permalink)
+    except:
+        log.warning('Unable to remove %s from one shots section' % post.permalink)
+        #TODO: some error message migt be in order but neither of those elements *has* to exist
+
+# remove from one shots page
+def remove_one_shot(post):
+    try:
+        p = account.get_wiki_page(account.subname, 'authors/%s/one-shots' % post.author.name)
+        q = pq(unescape_tags(p.content_html))
+        ul = find_series_list(q, '/r/%s/wiki/authors/%s' % (account.subname, post.author.name))
+        find_link(ul, post.permalink).parents('li:first').remove()
+        q('.toc').remove()
+        q('ul li:empty').remove()
+        account.edit_wiki_page(account.subname, 'authors/%s/one-shots'% post.author.name, html2md.handle(q.html()))
+
+        log.debug('removed %s from one shots page' % post.permalink)
+    except:
+        log.warning('Unable to remove %s from one shots page' % post.permalink)
+        #TODO: some error message migt be in order but neither of those elements *has* to exist
 
 
 def check_submissions():
     while True:
-        sleep(30)
         log.debug('waking up!')
-        new = account.get_subreddit(account.subname).get_new(limit=1)
+        new = account.get_subreddit(account.subname).get_new(limit=2)
 
         for submission in new:
             try:
@@ -197,6 +247,8 @@ def check_submissions():
 
         log.debug('going to sleep...')
 
-
 sub = account.get_submission('http://www.reddit.com/r/HFYBeta/comments/2z7qy5/octhe_history_of_humans_1011/')
 sub1= account.get_submission('http://www.reddit.com/r/HFYBeta/comments/2yk6ef/test/')
+sub2= account.get_submission('http://www.reddit.com/r/HFYBeta/comments/2ygn5q/ocjenkinsverse_salvage_chapter_78_going_commando/')
+q = account.get_wiki_page('hfybeta', 'authors/other-guy')
+q = pq(unescape_tags(q.content_html))

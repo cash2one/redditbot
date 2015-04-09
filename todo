@@ -15,3 +15,19 @@ http://www.reddit.com/r/HFY/wiki/authors/meatfcker
 
 
 $('li').has('span.num:contains(0)').addClass('disabled')
+
+0. remove strong, if #one_shots - append link
+1. no one shots no series place all stories under one shots.
+2. see #one_shots no series stories or #series - place under current one shots
+
+4. see #series title with link links under not in list. gather the links to the next header
+
+
+
+>>> import urllib
+>>> resp = urllib.urlopen('http://bit.ly/bcFOko')
+>>> resp.getcode()
+200
+>>> resp.url
+'http://mrdoob.com/lab/javascript/harmony/'
+

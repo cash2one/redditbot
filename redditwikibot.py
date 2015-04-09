@@ -69,10 +69,18 @@ def reddit_link(link):
     return link[i:]
 
 
-def sanitize_title(title):
-    title = re.sub(re_title, '', title)
+def sanitize_title(original):
+    title = re.sub(re_title, '', original)
     title = re.sub('\[.*?\]', '', title)
-    return title.strip()
+    title = title.strip()
+
+    if title.lower().startswith('the '):
+        title = title[4:] + ', The'
+
+    if not title:
+        return original
+
+    return title
 
 
 def sanitize_series_name(name):
@@ -423,6 +431,8 @@ def main():
 #sub = account.get_submission('http://www.reddit.com/r/HFYBeta/comments/2z7qy5/octhe_history_of_humans_1011/')
 #sub1= account.get_submission('http://www.reddit.com/r/HFYBeta/comments/2yk6ef/test/')
 #sub2= account.get_submission('http://www.reddit.com/r/HFYBeta/comments/2ygn5q/ocjenkinsverse_salvage_chapter_78_going_commando/')
+sub3 = account.get_submission('http://www.reddit.com/r/HFYBeta/comments/320x4h/octhe_manp2the_restrained/')
+sub4 = account.get_submission('http://www.reddit.com/r/HFYBeta/comments/320x2e/ocone_shotpretty_short_the_great_filter/')
 #q = query_wiki_page('authors/other-guy')
 
 #main()

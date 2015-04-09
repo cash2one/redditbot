@@ -346,10 +346,28 @@ def check_submissions():
 def test():
     q = query_wiki_page('authors/other-guy')
     ul = find_series_list(q, '/r/hfybeta/wiki/authors/other-guy/one-shots')
-
     sort_stories_list(ul)
-
     edit_wiki_page('authors/other-guy', q)
+
+def sort_authors(page_name='authors'):
+    q = query_wiki_page(page_name)
+
+    if q('strong'):
+        q('strong').replace_with(lambda x,y: y.text)
+
+    ul = q('ul li h5').parents('ul:first')
+    lis = list(q('ul li h5').parents('li'))
+
+    lis.sort(key=lambda x: pq(x)('h5').text())
+
+    new = pq('<ul>')
+
+    for x in lis :new.append(x)
+
+    ul.replace_with(new)
+
+    edit_wiki_page(page_name, q)
+
 
 def sort_stories_list(ul):
     links = list(ul('li a[href*="/comments/"]'))
@@ -362,8 +380,6 @@ def sort_stories_list(ul):
         new.append(li)
 
     ul.replace_with(new)
-
-    
 
 def main():
     while True:

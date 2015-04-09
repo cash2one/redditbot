@@ -11,8 +11,6 @@ from timeit import default_timer as timer
 
 log.basicConfig(level=log.DEBUG)
 
-re_title = re.compile('(\[|\()(oc|pi|jenkinsverse|j-verse|jverse|misc|nsfw)(\]|\))', re.IGNORECASE)
-
 unescape_tags = HTMLParser().unescape
 html2md = html2text.HTML2Text()
 html2md.body_width = 0
@@ -72,7 +70,10 @@ def reddit_link(link):
 
 
 def sanitize_title(title):
-    return re.sub(re_title, '', title)
+    title = re.sub(re_title, '', title)
+    title = re.sub('\[.*?\]', '', title)
+    return title.strip()
+
 
 def sanitize_series_name(name):
     return re.sub('[^0-9a-zA-Z]+', '_', name)

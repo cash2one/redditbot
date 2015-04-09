@@ -349,25 +349,36 @@ def test():
     sort_stories_list(ul)
     edit_wiki_page('authors/other-guy', q)
 
-def sort_authors(page_name='authors'):
+def sort_authors_index(page_name='authors'):
     q = query_wiki_page(page_name)
 
-    if q('strong'):
-        q('strong').replace_with(lambda x,y: y.text)
+    q('h5 a[href*="/wiki/authors/"] strong').replace_with(lambda x,y: y.text)
 
     ul = q('ul li h5').parents('ul:first')
     lis = list(q('ul li h5').parents('li'))
-
     lis.sort(key=lambda x: pq(x)('h5').text())
-
     new = pq('<ul>')
 
-    for x in lis :new.append(x)
+    for x in lis :
+        tmp = pq(x)
+        sort_authors_names(tmp('ul'))
+        new.append(tmp)
 
     ul.replace_with(new)
 
     edit_wiki_page(page_name, q)
 
+def sort_authors_names(ul):
+    links = list(ul('li a[href*="/wiki/authors/"]'))
+    links.sort(key=lambda x: x.text.strip().lower()) 
+
+    new = pq('<ul>')
+    for a in links:
+        li = pq('<li>')
+        li.append(pq(a))
+        new.append(li)
+
+    ul.replace_with(new)
 
 def sort_stories_list(ul):
     links = list(ul('li a[href*="/comments/"]'))

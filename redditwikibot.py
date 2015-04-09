@@ -301,7 +301,7 @@ def add_author(post):
     header = q('wiki_'+ letter)
 
     if not header:
-        header = pq('<h5>%s</h5><ul/>' %s letter)
+        header = pq('<h5>%s</h5><ul/>' % letter)
         q.append(header)
 
     ul = header('ul')
@@ -343,6 +343,27 @@ def check_submissions():
 
         log.debug('going to sleep...')
 
+def test():
+    q = query_wiki_page('authors/other-guy')
+    ul = find_series_list(q, '/r/hfybeta/wiki/authors/other-guy/one-shots')
+
+    sort_stories_list(ul)
+
+    edit_wiki_page('authors/other-guy', q)
+
+def sort_stories_list(ul):
+    links = list(ul('li a[href*="/comments/"]'))
+    links.sort(key=lambda x: x.text.strip().lower()) 
+
+    new = pq('<ul>')
+    for a in links:
+        li = pq('<li>')
+        li.append(pq(a))
+        new.append(li)
+
+    ul.replace_with(new)
+
+    
 
 def main():
     while True:
@@ -351,9 +372,9 @@ def main():
         except:
             log.exception("Unknown Error")
 
-sub = account.get_submission('http://www.reddit.com/r/HFYBeta/comments/2z7qy5/octhe_history_of_humans_1011/')
-sub1= account.get_submission('http://www.reddit.com/r/HFYBeta/comments/2yk6ef/test/')
-sub2= account.get_submission('http://www.reddit.com/r/HFYBeta/comments/2ygn5q/ocjenkinsverse_salvage_chapter_78_going_commando/')
-q = query_wiki_page('authors/other-guy')
+#sub = account.get_submission('http://www.reddit.com/r/HFYBeta/comments/2z7qy5/octhe_history_of_humans_1011/')
+#sub1= account.get_submission('http://www.reddit.com/r/HFYBeta/comments/2yk6ef/test/')
+#sub2= account.get_submission('http://www.reddit.com/r/HFYBeta/comments/2ygn5q/ocjenkinsverse_salvage_chapter_78_going_commando/')
+#q = query_wiki_page('authors/other-guy')
 
 #main()

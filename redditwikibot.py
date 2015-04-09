@@ -344,11 +344,6 @@ def check_submissions():
 
         log.debug('going to sleep...')
 
-def test():
-    q = query_wiki_page('authors/other-guy')
-    ul = find_series_list(q, '/r/hfybeta/wiki/authors/other-guy/one-shots')
-    sort_stories_list(ul)
-    edit_wiki_page('authors/other-guy', q)
 
 def sort_authors_index(page_name='authors'):
     q = query_wiki_page(page_name)
@@ -381,8 +376,33 @@ def sort_authors_names(ul):
 
     ul.replace_with(new)
 
-def sort_stories_list(ul):
-    links = list(ul('li a[href*="/comments/"]'))
+def sort_series_index(page_name='series'):
+    q = query_wiki_page(page_name)
+
+    q('h5 a[href*="/wiki/series/"] strong').replace_with(lambda x,y: y.text)
+
+    ul = q('ul li h5').parents('ul:first')
+    lis = list(q('ul li h5').parents('li'))
+    lis.sort(key=lambda x: pq(x)('h5').text())
+
+    new = pq('<ul>')
+
+    for x in lis :
+        tmp = pq(x)
+        sort_series_names(tmp('ul'))
+        new.append(tmp)
+
+    n = new('#wiki_numbers').parents('li:first')
+    if n:
+        n.remove()
+        new.prepend(n)
+
+    ul.replace_with(new)
+
+    edit_wiki_page(page_name, q)
+
+def sort_series_names(ul):
+    links = list(ul('li a[href*="/wiki/series"]'))
     links.sort(key=lambda x: x.text.strip().lower()) 
 
     new = pq('<ul>')

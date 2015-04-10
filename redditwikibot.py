@@ -15,6 +15,7 @@ unescape_tags = HTMLParser().unescape
 html2md = html2text.HTML2Text()
 html2md.body_width = 0
 
+
 account = praw.Reddit(user_agent='hfywikibot 0.1 by /u/HFY_wiki_bot')
 account.login('hfy_wiki_bot','dupa.8')
 account.subname = 'hfybeta'
@@ -31,6 +32,19 @@ class NewWikiPage:
     def __init__(self, new_page):
         self.page = 'new'
         self.new_page = new_page
+
+def is_header(el):
+    headers = ['h%s' % x for x in range(1,10) ]
+    for h in headers:
+        if el.is_(h): return True
+
+    return False
+
+def one_shots_link(author):
+    return '/r/%s/wiki/authors/%s/one-shots' % (account.subname, author)
+
+def series_section_link():
+    return '/r/%s/wiki/series/' %s account.subname
 
 def wiki_text(content):
     return html2md(pq(content).html())
@@ -91,7 +105,6 @@ def format_series_link(name, link):
     return '<p><a href="%s" rel="nofollow">%s</a></p>'% (link, sanitize_title(name))
 
 def find_series_list(q, series_url):
-    headers = ['h%s' % x for x in range(1,10) ]
     a = find_link(q, series_url)
     if a is None: return None
 
@@ -110,7 +123,7 @@ def find_series_list(q, series_url):
         if not el: break
 
         if el[0].tag.lower() == 'ul': ul = el
-        if el[0].tag.lower() in headers: break
+        if is_header(el): break
         
         el = el.next()
 
@@ -161,7 +174,7 @@ def init_section(html):
 
 def add_one_shot(post):
     wiki_page_name = 'authors/%s' % (post.author.name)
-    series_url = '/r/%s/wiki/authors/%s/one-shots' % (account.subname, post.author.name)
+    series_url = one_shots_link(post.author.name) 
     init = init_section('<h2><a href="%s">One Shots</a></h2><ul/>' % series_url)
     save_wiki_page(post, wiki_page_name, series_url, init)
 
@@ -239,7 +252,7 @@ def save_wiki_page(post, wiki_page_name, series_url, init, remove=False):
 # remove from one shot section
 def remove_from_one_shots(q, post):
     try:
-        ul = find_series_list(q, '/r/%s/wiki/authors/%s/one-shots' % (account.subname, post.author.name))
+        ul = find_series_list(q,  one_shots_link(post.author.name))
         find_link(ul, post.permalink).parents('li:first').remove()
         log.debug('removed %s from one shots section' % post.permalink)
     except:
@@ -268,6 +281,7 @@ def to_pq(wiki_page):
 def clean_dom(q):
     q('.toc').remove()
     q('ul li:empty').remove()
+    q('strong').replace_with(lambda x,y: y.text)
 
 def query_wiki_page(page_name):
     try:
@@ -356,7 +370,7 @@ def check_submissions():
 def sort_authors_index(page_name='authors'):
     q = query_wiki_page(page_name)
 
-    q('h5 a[href*="/wiki/authors/"] strong').replace_with(lambda x,y: y.text)
+    q('strong').replace_with(lambda x,y: y.text)
 
     ul = q('ul li h5').parents('ul:first')
     lis = list(q('ul li h5').parents('li'))
@@ -387,7 +401,7 @@ def sort_authors_names(ul):
 def sort_series_index(page_name='series'):
     q = query_wiki_page(page_name)
 
-    q('h5 a[href*="/wiki/series/"] strong').replace_with(lambda x,y: y.text)
+    q('strong').replace_with(lambda x,y: y.text)
 
     ul = q('ul li h5').parents('ul:first')
     lis = list(q('ul li h5').parents('li'))
@@ -420,6 +434,46 @@ def sort_series_names(ul):
         new.append(li)
 
     ul.replace_with(new)
+
+def get_fixed_section(q, author, names, link):
+    res = q('#wiki_one_shots')
+    if not res:
+        for x name in names:
+            res = q(':contains("%s")' %s name)
+            if res: break
+     
+    if not res: 
+        return False
+    
+    if is_header(res): 
+        a = q('<a href="%s">%s</a>' % (link, res.text()))
+        res.empty();
+        res.append(a)
+        return res
+    elif res.is_('a'):
+        p = res.parent()
+        if not is_header(p):
+            res.attr('href', link)
+            h = pq('<h2>').append(res)
+            res.replace_with(h)
+    else:
+        h = pq('<h2><a href=%s>%s</a></h2>' % (link, res.text()))
+        res.replace_with(h)
+
+    return True
+    
+def fix_page(author):
+    q = query_wiki_page('authors/'+pagename)
+    clean_dom(q)
+
+    names = ['ONE SHOTS', 'one shots', 'One Shots', 'One shots'] 
+    names += [ x.replace(' ', '-') for x in names ]
+
+    one_shots = get_fixed_section(q, author, names, one_shots_link(author))
+
+    names = ['Series', 'SERIES', 'series']
+    
+    series = get_fixed_section(q, author, names, series_section_link())
 
 def main():
     while True:

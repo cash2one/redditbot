@@ -88,9 +88,6 @@ def sanitize_title(original):
     title = re.sub('\[.*?\]', '', title)
     title = title.strip()
 
-    if title.lower().startswith('the '):
-        title = title[4:] + ', The'
-
     if not title:
         return original
 
@@ -469,11 +466,15 @@ def fix_page(author):
     names = ['ONE SHOTS', 'one shots', 'One Shots', 'One shots'] 
     names += [ x.replace(' ', '-') for x in names ]
 
-    one_shots = get_fixed_section(q, author, names, one_shots_link(author))
+    one_shots_section = get_fixed_section(q, author, names, one_shots_link(author))
 
     names = ['Series', 'SERIES', 'series']
     
-    series = get_fixed_section(q, author, names, series_section_link())
+    series_section = get_fixed_section(q, author, names, series_section_link())
+
+    series = q('a[href*="/wiki/series/"]')
+
+
 
 def main():
     while True:

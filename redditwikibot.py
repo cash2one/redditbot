@@ -474,6 +474,8 @@ def fix_page(author):
 
     series = q('a[href*="/wiki/series/"]')
 
+    stories = q('a[href*="/r/%s//comments/"]')
+
 
 
 def main():

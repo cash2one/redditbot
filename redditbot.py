@@ -44,7 +44,11 @@ class SortableLine:
             self.name = re_title.sub('', self.name[0]).strip()
 
             self.permalink = re_perm.findall(line)
-            self.permalink= self.permalink[0]
+
+            if not self.permalink:
+                self.permalink = 'error'
+            else:
+                self.permalink= self.permalink[0]
 
             self.sortby = self.name.lower()
         except Exception, e:
@@ -123,7 +127,9 @@ class TagBot:
                 for t in self.tags:
                     if t not in self.wiki_modification_time: self.wiki_modification_time[t] = 0
 
-                self.volunteers = self.get_volunteers()
+                self.ultrataggers = self.get_ultrataggers()
+                self.volunteers = self.get_volunteers() + self.ultrataggers
+
                 self.mods = self.get_mods()
                 self.codex_keeper = self.get_codex_keeper().replace('/u/','').replace('/','')
                 self.read_locked()
@@ -140,6 +146,9 @@ class TagBot:
 
     def get_volunteers(self):
         return re_user.findall(self.get_wiki_page('volunteers').content_md)
+
+    def get_ultrataggers(self):
+        return re_user.findall(self.get_wiki_page('ultrataggers').content_md)
     
     def get_accepted_tags(self):
         return re_name.findall(self.get_wiki_page('accepted').content_md)
@@ -164,9 +173,9 @@ class TagBot:
         if not comment.author: comment.author = DummyAuthor('deleted')
         if not comment.submission.author: comment.submission.author = DummyAuthor('deleted')
 
-        if comment.author.name != comment.submission.author.name and comment.author.name not in self.mods:
+        if comment.author.name != comment.submission.author.name and comment.author.name not in self.ultrataggers and comment.author.name not in self.mods:
             removed = []
-            reply += 'Only the submitter or one of the mods can remove tags! sorry!\n\n'
+            reply += 'Only the submitter or one of the mods/ultrataggers can remove tags! sorry!\n\n'
 
         for tag in added + removed:
             page = self.get_wiki_page(tag)
@@ -181,6 +190,7 @@ class TagBot:
                                                                                               comment.submission.author.name)) ]
             else:
                 lines = [ x for x in lines if x.permalink != comment.submission.permalink ]
+
 
             log.debug("updating %s [removing?: %s] for %s" % (tag, tag in removed, comment.submission.title))
             md = format_wiki_page(sort_titles(lines), tag)
